@@ -212,10 +212,9 @@ class VectorDB:
             self,
             output_dir: str,
             filename: str) -> str:
-        result = self.labelsdb.create_zip_labeled_data(output_dir, filename)
+        result, column_names = self.labelsdb.create_zip_labeled_data()
         os.makedirs(output_dir, exist_ok=True)
-        columns = ["image_path", "animal", "description", "relevant"]
-        df = pd.DataFrame(result, columns=columns)
+        df = pd.DataFrame(result, columns=column_names)
         original_path = os.environ.get("CSV_PATH")
         original_df = pd.read_csv(original_path)
         original_df = original_df.set_index("image_path")

@@ -85,27 +85,35 @@ class LabelsDB:
         return [row[0] for row in cursor.fetchall()]
 
 
-    def create_zip_labeled_data(
-            self,
-            output_dir: str,
-            filename: str) -> str:
+    def create_zip_labeled_data(self) -> str:
         _, cursor = get_db_connection(self.db_file)
         query = """
-        SELECT
-            COALESCE(animal.image_path, description.image_path, relevant.image_path) AS image_path,
-            animal.label AS animal,
-            GROUP_CONCAT(description.label, ', ') AS description,
-            relevant.label AS relevant
-        FROM
-            animal
-        LEFT JOIN
-            description ON animal.image_path = description.image_path
-        LEFT JOIN
-            relevant ON animal.image_path = relevant.image_path
-        GROUP BY
-            COALESCE(animal.image_path, description.image_path, relevant.image_path), animal.label, relevant.label;
-
+            SELECT
+                left_table.image_path,
+                GROUP_CONCAT(description.label, ", ") AS descriptions,
+                GROUP_CONCAT(keywords.label, ", ") AS negative_keywords,
+                animal.label AS animal,
+                relevant.label AS relevant
+            FROM (
+                SELECT image_path FROM description
+                UNION
+                SELECT image_path FROM keywords
+                UNION
+                SELECT image_path FROM animal
+                UNION
+                SELECT image_path FROM relevant
+            ) AS left_table
+            LEFT OUTER JOIN description
+            ON left_table.image_path = description.image_path
+            LEFT OUTER JOIN keywords
+            ON left_table.image_path = keywords.image_path
+            LEFT OUTER JOIN animal
+            ON left_table.image_path = animal.image_path
+            LEFT OUTER JOIN relevant
+            ON left_table.image_path = relevant.image_path
+            GROUP BY left_table.image_path;
         """
         cursor.execute(query)
+        column_names = [column[0] for column in cursor.description]
         result = cursor.fetchall()
-        return result
+        return result, column_names
