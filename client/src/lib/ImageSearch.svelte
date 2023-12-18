@@ -2,11 +2,19 @@
   import type { Hits } from "./Api";
   import { similarSearch } from "./Api";
   import ImageCard from "./ImageCard.svelte";
+  import LabelAll from "./LabelAll.svelte";
+  import {selectedDataStore } from "./stores";
 
   let imagePath = "";
   let result: Promise<Hits> | null = null;
   let limit: string = "16";
   let excludeLabeled: boolean = false;
+  let labeledData: boolean = false;
+  let allSelectedData: {[key: string]: boolean; };
+
+  selectedDataStore.subscribe((storeSelectedData) => {
+    allSelectedData = storeSelectedData;
+  });
 
   function searchSimilarImages(searchPath: string) {
     const params = new URLSearchParams(searchPath);
@@ -14,11 +22,24 @@
     if (q) {
       imagePath = q;
       result = similarSearch(imagePath, +limit, excludeLabeled);
+      result.then( (hits: Hits) => {
+      if (result) {
+        const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));
+        selectedDataStore.update((storeSelectedData) => {
+          return { ...Object.assign({}, ...imagePaths) };
+        });
+      }
+    });
     }
   }
 
   function onQuerySubmit() {
     searchSimilarImages(location.search);
+  }
+
+  function onLabelAllEvent() {
+    console.log("onChangeLabels");
+    result = result;
   }
 
   // location is received as component props
@@ -109,6 +130,9 @@
               <ImageCard {hit} />
             </div>
           {/each}
+          <div class="w-25">
+            <LabelAll allHits={result.hits} on:changeLabels={onLabelAllEvent} />
+          </div>
         </div>
       {/if}
     {:catch error}

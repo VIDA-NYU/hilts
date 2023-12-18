@@ -1,11 +1,26 @@
 import { writable } from 'svelte/store';
-import { descriptions, negativeKeywords } from './Descriptions';
+import { animals, descriptions, negativeKeywords } from "./Descriptions";
 
-export const labelStore = writable<string[]>(descriptions);
+// type LabelType = "relevant" |  " animal";
 
-export const animalStore = writable<string[]>(["Ostrich", "Wolf", "Silky shark", "Great white shark", "Sand tiger shark", "Hippoglossus", "Halibut", "Ground beetle", "Nile crocodile", "Redfish"]);
+// interface Label {
+//     name: string;
+//     type: LabelType;
+// }
+
+// const labels: Label[];
+
+// interface LabelList = {
+//     [key: LabelType]: string[];
+// };
+
+export const descriptionsStore = writable<string[]>(descriptions);
+
+export const animalStore = writable<string[]>(animals);
 
 export const negativeKeywordStore = writable<string[]>(negativeKeywords);
+
+export const selectedDataStore = writable({});
 
 export const modal = writable(null);
 export const windowStyle = writable({});

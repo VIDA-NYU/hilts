@@ -117,6 +117,7 @@ class VectorDB:
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
+        print(df_hits["labels_types_dict"])
         return df_hits
 
     def search_by_image_path(

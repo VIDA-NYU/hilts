@@ -1,22 +1,43 @@
 <script lang="ts">
   import SearchForm from "./SearchForm.svelte";
-  import type { Hits } from "./Api";
+  import type { Hits, Hit } from "./Api";
   import { keywordSearch } from "./Api";
   import ImageCard from "./ImageCard.svelte";
+  import LabelAll from "./LabelAll.svelte";
+  import {selectedDataStore } from "./stores";
 
   let limit: string = "16";
   let excludeLabeled: boolean = false;
   let queryStr = "";
   let result: Promise<Hits> | null = null;
+  let allSelectedData: {[key: string]: boolean; };
+
+  selectedDataStore.subscribe((storeSelectedData) => {
+    allSelectedData = storeSelectedData;
+  });
 
   function onQuerySubmit() {
     result = keywordSearch(queryStr, +limit, excludeLabeled);
+    result.then( (hits: Hits) => {
+      if (result) {
+        const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));
+        selectedDataStore.update((storeSelectedData) => {
+          return { ...Object.assign({}, ...imagePaths) };
+        });
+      }
+    });
   }
 
   function clearSearch() {
     queryStr = "";
     result = null;
   }
+
+  function onLabelAllEvent() {
+    console.log("onChangeLabels");
+    result = result;
+  }
+
 </script>
 
 <div class="container">
@@ -103,6 +124,9 @@
               <ImageCard {hit} />
             </div>
           {/each}
+          <div class="w-25">
+            <LabelAll allHits={result.hits} on:changeLabels={onLabelAllEvent} />
+          </div>
         </div>
       {/if}
     {:catch error}

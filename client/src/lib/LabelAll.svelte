@@ -1,7 +1,5 @@
 <script lang="ts">
-  import Modal from "./Modal.svelte";
   import type { Hit } from "./Api";
-  import { navigate } from "svelte-routing";
   import {
     descriptionsStore,
     animalStore,
@@ -10,38 +8,26 @@
   } from "./stores";
   import AutoComplete from "simple-svelte-autocomplete";
   import * as api from "./Api";
+  import { createEventDispatcher } from 'svelte';
 
-  export let hit: Hit;
-  $: parsedHitMetadata = hit.metadata;
-  $: hitLabels = hit.labels_types_dict;
+	const dispatch = createEventDispatcher();
 
-  let showModal = false;
+  export let allHits: Hit[];
 
-  let allLabels: string[];
+  let allDescriptions: string[];
   let allAnimals: string[];
   let allNegKeywords: string[];
-  let allSelectedData: { [key: string]: boolean };
-  let selectedDescription: string;
-  let selectedNegKeyword: string;
-  let selectedAnimal: string;
-  let isSelected: boolean = true;
 
-  // tableau10 colors
-  const colors = [
-    "#1f77b4",
-    "#ff7f0e",
-    "#2ca02c",
-    "#d62728",
-    "#9467bd",
-    "#8c564b",
-    "#e377c2",
-    "#7f7f7f",
-    "#bcbd22",
-    "#17becf",
-  ];
+  let selectedDescription: string;
+  let selectedAnimal: string;
+  let selectedNegKeyword: string;
+
+  let allSelectedData: { [key: string]: boolean };
+
+  let labels = {};
 
   descriptionsStore.subscribe((storeLabels) => {
-    allLabels = storeLabels;
+    allDescriptions = storeLabels;
   });
 
   animalStore.subscribe((storeAnimals) => {
@@ -56,59 +42,80 @@
     allSelectedData = storeSelectedData;
   });
 
-  function togggleSelected() {
-    isSelected = !isSelected;
-    selectedDataStore.update((selectedData) => {
-      selectedData[hit.image_path] = isSelected;
-      return selectedData;
-    });
-  }
-
   function addLabelExclusive(newLabel: string, type: api.LabelType) {
     if (!newLabel || newLabel === "") {
       return;
     }
-    let hitLabels = hit.labels_types_dict;
-    let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
-    if (typeof hitKey === 'string') {
-      if (hitKey === newLabel) {
-        return;
-      }
-      if (
-        hitKey !== newLabel
-      ){
-        api.removeLabel(hit.image_path, hitKey, `${type}`);
-        delete hitLabels[hitKey];
+    console.log(labels);
+
+    if (
+      labels &&
+      Object.keys(labels).length !== 0
+    ) {
+      const labelKey = Object.keys(labels).find((key) => labels[key] === type);
+      if (labelKey && labelKey !== newLabel) {
+        delete labels[labelKey];
       }
     }
-    hitLabels[newLabel] = `${type}`;
-    hit.labels_types_dict = hitLabels;
+    labels[newLabel] = `${type}`;
+
+    const selectedHits = allHits.filter(hit => allSelectedData[hit.image_path] === true);
+
+    // Send label for all hits marked
+    for (let hit of selectedHits) {
+      let hitLabels = hit.labels_types_dict;
+      let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
+      if (hitKey) {
+        if (hitKey === newLabel) {
+          // label already applied, skip to next
+          continue;
+        } else {
+          api.removeLabel(hit.image_path, hitKey, `${type}`);
+          delete hit.labels_types_dict[hitKey];
+        }
+      }
+      hit.labels_types_dict[newLabel] = type;
+      sendToBackend(hit.image_path, newLabel, type);
+    }
+    dispatch('changeLabels', {
+		});
+    console.log(labels)
+  }
+
+  function addLabelInclusive(newLabel: string, type: api.LabelType) {
+    console.log("addLabelInclusive", newLabel, type);
+    if (!newLabel || newLabel === "") {
+      return;
+    }
+    labels[newLabel] = `${type}`;
+
+    // add label for each hit on page
+    const selectedHits = allHits.filter(hit => allSelectedData[hit.image_path] === true);
+    for (let hit of selectedHits) {
+      let hitLabels = hit.labels_types_dict;
+      hitLabels[newLabel] = `${type}`;
+      hit.labels_types_dict = hitLabels;
+      sendToBackend(hit.image_path, newLabel, type);
+    }
+    dispatch('changeLabels', {
+		});
+  }
+
+  function sendToBackend(image_path: string, label: string, type: api.LabelType) {
+    console.log('Send to backend: ', image_path, label, type);
     try {
-      api.addLabel(hit.image_path, newLabel, `${type}`);
+      api.addLabel(image_path, label, type); // FIXME
     } catch (e) {
       console.log(e);
     }
   }
 
-  function addLabelInclusive(newLabel: string, type: api.LabelType) {
-    if (!newLabel || newLabel === "") {
-      return;
-    }
-    let hitLabels = hit.labels_types_dict;
-    let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
-    console.log(hitKey)
-    if ((Array.isArray(hitKey)) && hitKey.length > 0) {
-      if (hitKey.includes(newLabel)) {
-        return;
-      }
-    }
-    hitLabels[newLabel] = `${type}`;
-    hit.labels_types_dict = hitLabels;
-    try {
-      api.addLabel(hit.image_path, newLabel, `${type}`);
-    } catch (e) {
-      console.log(e);
-    }
+  function onChangeDescription(newLabel: string) {
+    addLabelInclusive(newLabel, "description");
+  }
+
+  function onChangeKeyword(newKeyword: string) {
+    addLabelInclusive(newKeyword, "keywords");
   }
 
   function handleCreateDescription(newLabel: string) {
@@ -122,49 +129,45 @@
     negativeKeywordStore.update((storeNegKeyword) => {
       return [...new Set([...storeNegKeyword, newKeyword])];
     });
-    return newKeyword; // return the new label to the autocomplete
+    return newKeyword;
+  }
+
+  function onChangeAnimal(newAnimal: string) {
+    console.log("change", labels, newAnimal);
+    if (newAnimal) {
+      console.log("onChangeAnimal", newAnimal);
+      addLabelExclusive(newAnimal, "animal");
+    } else {
+      console.log("undefined label: ", newAnimal);
+    }
   }
 
   function removeLabels(label: string) {
-    let hitLabels = hit.labels_types_dict;
-    let type =  hitLabels[label] as api.LabelType;
-    console.log(hitLabels, type);
-    if (hitLabels && hitLabels[label]) {
-      api.removeLabel(hit.image_path, label, `${type}`);
-      delete hitLabels[label];
-      hit.labels_types_dict = hitLabels;
+    delete labels[label];
+    labels = labels; // required to update component
+
+    const selectedHits = allHits.filter(hit => allSelectedData[hit.image_path] === true);
+    for (let hit of selectedHits) {
+      if (allSelectedData[hit.image_path] === true) {
+
+        const hitLabels = hit.labels_types_dict;
+        if (hitLabels && hitLabels[label]) {
+          api.removeLabel(hit.image_path, label, hitLabels[label]);
+          delete hitLabels[label];
+        }
+      }
     }
-    console.log("end: ", hitLabels);
+
+    dispatch('changeLabels', {
+		});
   }
+
 </script>
 
 <div class="card me-3 mb-3">
-  <img
-    src={"/images/" + hit.image_path}
-    style="max-height: 350px;"
-    class="card-img-top"
-  />
+  <div class="card-header">Label All Ads</div>
   <div class="box-container">
-    <div
-      class="d-flex flex-row-reverse btn-group btn-group-toggle btn-group-sm"
-      data-toggle="buttons"
-    >
-      <label class="btn btn-sm btn-outline-primary" style="font-size: 0.7em">
-        <input
-          class="form-check-input"
-          id="selectedCheck"
-          type="checkbox"
-          autocomplete="off"
-          bind:checked={isSelected}
-          on:click={() => togggleSelected()}
-        />
-        {"Select Ad"}
-      </label>
-    </div>
     <div class="card-body">
-      <p class="card-text mb-2">
-        {hit.title ? hit.title : hit.image_path}
-      </p>
       <div class="btn-toolbar mt-1">
         <div class="btn-group me-2" role="group" aria-label="">
           <button
@@ -187,7 +190,7 @@
             items={allAnimals}
             bind:selectedItem={selectedAnimal}
             create={false}
-            onChange={(label) => addLabelExclusive(label, "animal")}
+            onChange={onChangeAnimal}
             placeholder="Animal"
           />
         </div>
@@ -196,11 +199,11 @@
             <AutoComplete
               debug={false}
               inputClassName="form-control"
-              items={allLabels}
+              items={allDescriptions}
               bind:selectedItem={selectedDescription}
               create={true}
               onCreate={handleCreateDescription}
-              onChange={(label) => addLabelInclusive(label, "description")}
+              onChange={onChangeDescription}
               placeholder="Description"
             />
           </div>
@@ -213,79 +216,36 @@
               items={allNegKeywords}
               bind:selectedItem={selectedNegKeyword}
               create={true}
-              onChange={(label) => addLabelInclusive(label, "keywords")}
+              onChange={onChangeKeyword}
               onCreate={handleCreateKeyword}
               placeholder="Negative Keyword"
             />
           </div>
         </div>
-        {#if hitLabels && Object.keys(hitLabels).length > 0}
-          <div class="btn-toolbar mb-1">
-            {#each Object.entries(hitLabels) as [label, value], idx}
-              <span
-                class="badge rounded-pill bg-secondary me-1 mt-1 mb-1 position-relative"
-              >
-                <!-- style="background-color: {colors[idx]} !important;" -->
-                {label}
-                <span
-                  role="button"
-                  on:click={() => removeLabels(label)}
-                  class="position-absolute top-0 start-100 translate-middle"
-                >
-                  <i class="fa fa-times-circle" aria-hidden="true" />
-                  <span class="visually-hidden">Remove label</span>
-                </span>
-              </span>
-            {/each}
-          </div>
-        {/if}
-        <div class="d-flex justify-content-between">
-          <div class="btn-group">
-            <button
-              class="btn btn-sm btn-info me-1"
-              on:click={() => (showModal = true)}
-            >
-              <i class="fa fa-info-circle me-1" aria-hidden="true" />
-              Metadata
-            </button>
-            <button
-              class="btn btn-sm btn-info"
-              on:click={() => navigate("/search/image?q=" + hit.image_path)}
-            >
-              <i class="fa fa-search me-1" aria-hidden="true" />
-              Find Similar
-            </button>
-          </div>
-        </div>
       </div>
+      {#if labels && Object.keys(labels).length > 0}
+        <div class="btn-toolbar">
+          {#each Object.entries(labels) as [label, value], idx}
+            <span
+              class="badge rounded-pill bg-secondary me-1 mt-2 position-relative"
+            >
+              <!-- style="background-color: {colors[idx]} !important;" -->
+              {label}
+              <span
+                role="button"
+                on:click={() => removeLabels(label)}
+                class="position-absolute top-0 start-100 translate-middle"
+              >
+                <i class="fa fa-times-circle" aria-hidden="true" />
+                <span class="visually-hidden">Remove label</span>
+              </span>
+            </span>
+          {/each}
+        </div>
+      {/if}
     </div>
   </div>
 </div>
-
-<Modal bind:showModal>
-  <h2 slot="header">Metadata</h2>
-
-  <ul slot="body" class="definition-list___">
-    <li>
-      <strong>title:</strong>
-      {hit.title ? hit.title : hit.image_path}
-    </li>
-    {#each Object.keys(parsedHitMetadata) as key}
-      <li>
-        {#if key == "url"}
-          <strong>{key}:</strong>
-          <a
-            href={parsedHitMetadata[key]}
-            target="_blank"
-            referrerpolicy="no-referrer">{parsedHitMetadata[key]}</a
-          >
-        {:else}
-          <strong>{key}:</strong> {parsedHitMetadata[key]}
-        {/if}
-      </li>
-    {/each}
-  </ul>
-</Modal>
 
 <style>
   :global(.autocomplete-list) {

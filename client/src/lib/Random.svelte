@@ -3,17 +3,33 @@
   import type { Hits } from "./Api";
   import { random } from "./Api";
   import ImageCard from "./ImageCard.svelte";
+  import LabelAll from "./LabelAll.svelte";
+  import { selectedDataStore } from "./stores";
 
   let result: Promise<Hits> | null = null;
   let limit: string = "16";
+  let allSelectedData: {[key: string]: boolean; };
+
+  selectedDataStore.subscribe((storeSelectedData) => {
+    allSelectedData = storeSelectedData;
+  });
 
   function onQuerySubmit() {
     result = random(+limit);
+    result.then( (hits: Hits) => {
+      if (result) {
+        const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));
+        selectedDataStore.update((storeSelectedData) => {
+          return { ...Object.assign({}, ...imagePaths) };
+        });
+      }
+    });
   }
-  export const someFunc = () => console.log('someFunc');
-  // onLoad(() => {
-  //   onQuerySubmit();
-  // });
+
+  function onLabelAllEvent() {
+    console.log("onChangeLabels");
+    result = result;
+  }
 </script>
 
 <div class="container">
@@ -72,6 +88,9 @@
               <ImageCard {hit} />
             </div>
           {/each}
+          <div class="w-25">
+            <LabelAll allHits={result.hits} on:changeLabels={onLabelAllEvent} />
+          </div>
         </div>
       {/if}
     {:catch error}

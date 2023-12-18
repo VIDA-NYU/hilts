@@ -1,4 +1,18 @@
-export const negativeKeywords = ["Mobile Case",
+export const animals = [
+  "Ostrich",
+  "Wolf",
+  "Silky shark",
+  "Great white shark",
+  "Sand tiger shark",
+  "Hippoglossus",
+  "Halibut",
+  "Ground beetle",
+  "Nile crocodile",
+  "Redfish",
+];
+
+export const negativeKeywords = [
+  "Mobile Case",
   "Tool",
   "Faux leather",
   "Crystal",
@@ -25,7 +39,7 @@ export const negativeKeywords = ["Mobile Case",
   "T-shirt",
   "Resin",
   "Photo",
-  ]
+];
 
 export const descriptions = [
   "cobra",
@@ -817,4 +831,4 @@ export const descriptions = [
   "excotic pet",
   "cites",
   "wildlife",
-]
+];

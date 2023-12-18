@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Router, Link, Route } from "svelte-routing";
   import { onMount } from "svelte";
-  import { labelStore, negativeKeywordStore } from "./lib/stores";
+  import { descriptionsStore, negativeKeywordStore } from "./lib/stores";
   import * as api from "./lib/Api";
   import BootstrapComponents from "./BootstrapComponents.svelte";
   import Search from "./lib/Search.svelte";
@@ -15,7 +15,7 @@
   onMount(async () => {
     console.log("Loading positive keywords");
     const remotePositivekeywords = await api.loadLabels("description");
-    labelStore.update((labels: string[]) => [
+    descriptionsStore.update((labels: string[]) => [
       ...new Set([...labels, ...remotePositivekeywords.labels]),
     ]);
 

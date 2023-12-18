@@ -5,17 +5,18 @@ export interface Hits {
     hits: Hit[];
 }
 
+export type LabelType = "relevant" | "animal" | "description" | "keywords";
+
 export interface Hit {
     _distance: number;
     image_path: string;
     title: string;
-    relevant: string;
-    labels?: string[];
-    animal?: string;
-    description?: string[];
-    keywords?: string[];
     metadata?: string;
-    labels_types_dict?: {[key: string]: string; };
+    labels_types_dict: {[key: string]: LabelType; };
+    // relevant?: string;
+    // animal?: string;
+    // description?: string[];
+    // keywords?: string[];
 }
 
 
@@ -88,6 +89,8 @@ interface RemoveLabelResponse {
 }
 
 export async function removeLabel(image_path: string, label: string, table: string): Promise<RemoveLabelResponse> {
+    console.log("api.removeLabel()", image_path, label, table);
+
     const response = await fetchJSON<RemoveLabelResponse>("/remove_label", {
         image_path,
         label,
