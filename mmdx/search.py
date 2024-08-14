@@ -138,9 +138,12 @@ class VectorDB:
         )
         return df_hits
 
-    def search_by_text(
+    def search_by_seller(
         self, query_string: str, limit: int, exclude_labeled: bool
     ) -> pd.DataFrame:
+        original_path = os.environ.get("CSV_PATH")
+        original_df = pd.read_csv(original_path)
+
         query_str_embedding = self.model.embed_text(query=query_string)
         df_hits = self.__vector_embedding_search(
             query_str_embedding, limit, exclude_labeled

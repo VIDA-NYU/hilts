@@ -79,6 +79,14 @@ def image_search():
     return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
 
+@app.route("/api/v1/text_search")
+def text_search():
+    query: str = request.args.get("q")
+    exclude_labeled: bool = request.args.get("exclude_labeled", "false") == "true"
+    limit: int = request.args.get("limit", 12, type=int)
+    hits = db.search_by_seller(query_string=query, limit=limit, exclude_labeled=exclude_labeled)
+    return {"total": len(hits.index), "hits": hits.to_dict("records")}
+
 @app.route("/api/v1/labeled")
 def labeled_search():
     limit: int = request.args.get("limit", 12, type=int)
