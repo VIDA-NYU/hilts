@@ -28,6 +28,7 @@ def find_files_in_path(path, file_extensions=IMAGE_EXTENSIONS) -> Iterator[str]:
         for filename in filenames:
             relative_dir = dirpath.replace(path, "")
             file_path = os.path.join(relative_dir, filename)
+            print(file_path)
             if filename.lower().endswith(file_extensions):
                 yield file_path
             else:
@@ -39,11 +40,19 @@ def find_files_in_path(path, file_extensions=IMAGE_EXTENSIONS) -> Iterator[str]:
 
 def load_images_from_path(data_path: str, sample_size=DATA_SAMPLE_SIZE):
     image_files = list(find_files_in_path(data_path))
-    print(f"Found {len(image_files)} images in {data_path}")
-    if sample_size is not None:
-        print(f"Sampling {sample_size} out of {len(image_files)} images...")
-        image_files = random.sample(image_files, sample_size)
-    return image_files
+    if os.environ['LOAD_DATA'] == "True":
+        csv_path = os.environ['CSV_PATH']
+        df = pd.read_csv(csv_path)
+        image_files = df["image_path"].to_list()
+    else:
+        print(f"Found {len(image_files)} images in {data_path}")
+        if sample_size is not None:
+            print(f"Sampling {sample_size} out of {len(image_files)} images...")
+            image_files = random.sample(image_files, sample_size)
+            csv_path = os.environ['CSV_FILENAME']
+            df = pd.read_csv(csv_path)
+            image_files = df["image_path"].to_list()
+    return image_files, df
 
 
 def load_images_from_minio(
@@ -169,7 +178,8 @@ def make_df(
     if S3_Client:
         image_files, df = load_images_from_minio(data_path, S3_Client)
     else:
-        image_files = load_images_from_path(data_path)
+        print("getting images from local folder")
+        image_files, df= load_images_from_path(data_path)
 
     titles = []
     image_paths = []
@@ -194,6 +204,7 @@ def make_df(
         }
     )
     df['metadata'] = df['metadata'].apply(clean_and_validate_json)
+    print(f"Vector: {df['vector']}")
     return df
 
 

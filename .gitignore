@@ -3,3 +3,5 @@ __pycache__
 /data/
 /dist/
 /.idea/
+/node_modules
+.env

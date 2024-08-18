@@ -2,9 +2,9 @@
 FROM python:3.9-slim-bookworm as base
 #------------------------------------
 
-RUN apt-get update \
-    && apt-get upgrade \
-    && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update \
+#     && apt-get upgrade \
+#     # && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/
 

@@ -9,6 +9,7 @@
   import ImageSearch from "./lib/ImageSearch.svelte";
   import LabeledData from "./lib/LabeledData.svelte";
   import CSVLoader from "./lib/CSVLoader.svelte"; // Import the CSV Loader component
+  import SearchText from "./lib/SearchText.svelte";
 
   export let url = "";
 
@@ -59,6 +60,7 @@
         <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
           <div class="navbar-nav nav-underline">
             <Link to="/csv-loader" getProps={getLinkProps}>Load CSV File</Link>
+            <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link>
             <Link to="/" getProps={getLinkProps}>Keyword Search</Link>
             <Link to="/search/random" getProps={getLinkProps}>Random Search</Link>
             <Link to="/search/image" getProps={getLinkProps}>Image Search</Link>
@@ -78,6 +80,7 @@
         location={window.location}
       />
       <Route path="/labels" component={LabeledData} />
+      <Route path="/search/seller" component={SearchText} />
       <Route path="/csv-loader" component={CSVLoader} /> <!-- Add the route for CSV Loader -->
       <Route path="/bootstrap" component={BootstrapComponents} />
     </div>
