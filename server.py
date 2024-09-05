@@ -3,7 +3,6 @@ import os
 from flask import Flask, send_from_directory, send_file, request
 from mmdx.search import VectorDB
 from mmdx.model import ClipModel
-import numpy as np
 from mmdx.settings import (
     DATA_PATH,
     DB_PATH,
@@ -79,8 +78,8 @@ def image_search():
     return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
 
-@app.route("/api/v1/text_search")
-def text_search():
+@app.route("/api/v1/seller_search")
+def seller_search():
     query: str = request.args.get("q")
     exclude_labeled: bool = request.args.get("exclude_labeled", "false") == "true"
     limit: int = request.args.get("limit", 12, type=int)

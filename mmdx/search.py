@@ -12,6 +12,7 @@ from .db import LabelsDB
 from .settings import DEFAULT_TABLE_NAME, DB_BATCH_LOAD, DB_BATCH_SIZE
 from .s3_client import S3Client
 from io import BytesIO
+import re
 
 
 duckdb.sql(
@@ -117,7 +118,6 @@ class VectorDB:
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
-        print(df_hits["labels_types_dict"])
         return df_hits
 
     def search_by_image_path(
@@ -141,24 +141,19 @@ class VectorDB:
     def search_by_text(
         self, query_string: str, limit: int, exclude_labeled: bool
     ) -> pd.DataFrame:
-        query_str_embedding = self.model.embed_text(query=query_string)
-        df_hits = self.__vector_embedding_search(
-            query_str_embedding, limit, exclude_labeled
-        )
-        return df_hits
-
-    def search_by_seller(
-        self, query_string: str, limit: int, exclude_labeled: bool
-    ) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
         original_path = os.environ.get("CSV_PATH")
         original_df = pd.read_csv(original_path)
-        original_df =  original_df[original_df["seller"]==query_string]
-        image_path_list = [path for path in original_df["image_path"].dropna()]
-        image_path_list_str = ', '.join(f"'{path}'" for path in image_path_list)
+        original_df['contains_phrase'] = original_df['description'].str.contains(re.escape(query_string), case=False, na=False)
 
+        # Filter DataFrame to include only rows where the phrase is found
+        filtered_df = original_df[original_df['contains_phrase']]
+        image_path_list = [path for path in filtered_df["image_path"].dropna()]
+        image_path_list_str = ', '.join(f"'{path}'" for path in image_path_list)
+        print(f"total {image_path_list_str}")
+        print(f"list size {limit}")
         df_hits = duckdb.sql(
-            f"""
+            f"""WITH filtered_data AS (
                 SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
                 FROM lance_tbl
                 LEFT OUTER JOIN (
@@ -176,7 +171,49 @@ class VectorDB:
                     ) GROUP BY image_path
                 ) AS grouped_labels
                 ON (lance_tbl.image_path = grouped_labels.image_path)
-                WHERE lance_tbl.image_path IN ({image_path_list_str})
+                WHERE lance_tbl.image_path IN ({image_path_list_str}))
+                SELECT * FROM filtered_data
+                USING SAMPLE {limit} ROWS;
+                """
+                ).to_df()
+        df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
+        df_hits["title"] = df_hits["title"].fillna("")
+        df_hits["types"] = df_hits["types"].fillna("").apply(list)
+        df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
+        df_hits.drop(columns=["vector", "types"], inplace=True)
+        return df_hits
+
+    def search_by_seller(
+        self, query_string: str, limit: int, exclude_labeled: bool
+    ) -> pd.DataFrame:
+        lance_tbl = self.tbl.to_lance()
+        original_path = os.environ.get("CSV_PATH")
+        original_df = pd.read_csv(original_path)
+        original_df =  original_df[original_df["seller"]==query_string]
+        image_path_list = [path for path in original_df["image_path"].dropna()]
+        image_path_list_str = ', '.join(f"'{path}'" for path in image_path_list)
+
+        df_hits = duckdb.sql(
+            f"""WITH filtered_data AS (
+                SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
+                FROM lance_tbl
+                LEFT OUTER JOIN (
+                    SELECT image_path,
+                        list(label) AS labels,
+                        list(type) AS types
+                    FROM (
+                        SELECT image_path, label, 'description' AS type FROM sqlite_scan('{self.labelsdb_path}', 'description')
+                        UNION ALL
+                        SELECT image_path, label, 'relevant' AS type FROM sqlite_scan('{self.labelsdb_path}', 'relevant')
+                        UNION ALL
+                        SELECT image_path, label, 'animal' AS type FROM sqlite_scan('{self.labelsdb_path}', 'animal')
+                        UNION ALL
+                        SELECT image_path, label, 'keywords' AS type FROM sqlite_scan('{self.labelsdb_path}', 'keywords')
+                    ) GROUP BY image_path
+                ) AS grouped_labels
+                ON (lance_tbl.image_path = grouped_labels.image_path)
+                WHERE lance_tbl.image_path IN ({image_path_list_str}))
+                SELECT * FROM filtered_data
                 USING SAMPLE {limit} ROWS;
                 """
         ).to_df()

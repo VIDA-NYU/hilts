@@ -40,14 +40,14 @@ export async function similarSearch(imagePath: string, limit: number, excludeLab
     return response;
 }
 
-export async function TextSearch(queryStr: string, limit: number, excludeLabeled: boolean): Promise<Hits> {
-    const response = await fetchJSON<Hits>("/text_search", {
+export async function SellerSearch(queryStr: string, limit: number, excludeLabeled: boolean): Promise<Hits> {
+    const response = await fetchJSON<Hits>("/seller_search", {
         "q": queryStr,
         "exclude_labeled": excludeLabeled,
         limit: limit.toString(),
     }).catch((e) => {
         console.error(e);
-        throw new Error("Failed to retrieve text search results.", { cause: e })
+        throw new Error("Failed to retrieve seller search results.", { cause: e })
     });
     return response;
 }

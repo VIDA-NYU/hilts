@@ -1,7 +1,7 @@
 <script lang="ts">
     import SearchForm from "./SearchForm.svelte";
     import type { Hits, Hit } from "./Api";
-    import { TextSearch } from "./Api";
+    import { SellerSearch } from "./Api";
     import ImageCard from "./ImageCard.svelte";
     import LabelAll from "./LabelAll.svelte";
     import {selectedDataStore } from "./stores";
@@ -17,7 +17,7 @@
     });
 
     function onQuerySubmit() {
-      result = TextSearch(queryStr, +limit, excludeLabeled);
+      result = SellerSearch(queryStr, +limit, excludeLabeled);
       result.then( (hits: Hits) => {
         if (result) {
           const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));
