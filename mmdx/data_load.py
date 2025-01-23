@@ -217,7 +217,6 @@ def load_df(
 ) -> lancedb.table.Table:
     return db.create_table(table_name, data=make_df(data_path, model, S3_Client))
 
-
 def clean_and_validate_json(json_str):
     if pd.notna(json_str):
         try:

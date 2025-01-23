@@ -59,7 +59,7 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
           <div class="navbar-nav nav-underline">
-            <Link to="/csv-loader" getProps={getLinkProps}>Load CSV File</Link>
+            <Link to="/csv-loader" getProps={getLinkProps}>Setup Tracker</Link>
             <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link>
             <Link to="/" getProps={getLinkProps}>Keyword Search</Link>
             <Link to="/search/random" getProps={getLinkProps}>Random Search</Link>
