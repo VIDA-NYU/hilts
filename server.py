@@ -1,6 +1,6 @@
 from datetime import datetime
 import os
-from flask import Flask, send_from_directory, send_file, request
+from flask import Flask, send_from_directory, send_file, request, jsonify
 from mmdx.search import VectorDB
 from mmdx.model import ClipModel
 from mmdx.settings import (
@@ -15,6 +15,7 @@ from mmdx.settings import (
     LOAD_DATA,
 )
 from mmdx.s3_client import S3Client
+# from LTS import main
 from io import BytesIO
 
 app = Flask(__name__)
@@ -136,23 +137,66 @@ def download_binary_labeled_data():
     return send_file(output_zip_file, as_attachment=True)
 
 
+@app.route("/api/v1/start_lts_generation", methods=['POST'])
+def start_lts_generation():
+    try:
+        data = request.get_json()
+        id_ = data.get('ProjectId')
+        main(id_)
+            # main(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, retrain, idx, id)
+    except Exception as e:
+        return {'message': 'Error starting LTS'}
+
+@app.route("/api/v1/load/create_prompt", methods=['POST'])
+def create_prompt():
+    try:
+
+        data = request.get_json()
+        # Extract the prompt text
+        prompt_text = data.get('text')
+        project_id = data.get('ProjectId')
+        print(project_id)
+
+        if not prompt_text:
+            return {'message': 'No prompt provided'}
+        with open(f"{project_id}/prompt.txt", "w") as file:
+            file.write(prompt_text)
+        return {'message': 'Promt create successfully'}
+
+    except Exception as e:
+        return {'message': 'Prompt not create'}
+
 @app.route("/api/v1/load/csv_data", methods=['POST'])
 def create_database():
     # try:
     if 'file' not in request.files:
         return {'error': 'No file part'}
+
     file = request.files['file']
-    print(file)
 
     if file.filename == '':
-        return {'error': 'No selected file'}
+        raise ValueError('No selected file')
+
+    project_id = request.form.get('projectId')
+    if project_id =='':
+        return {'error': 'Please add a project ID'}
+    # Get the CSV file from the form data
 
     filename = file.filename
-    filepath = os.path.join(filename)
-    file.save(filepath)
-    os.environ['CSV_PATH'] = filepath
-    global db
-    db = create_db_for_data_path(S3_Client)
+    # filepath = os.path.join(project_id, filename)
+
+    project_dir = os.path.join(project_id)
+    print(project_dir)
+    if not os.path.exists(project_dir):
+        os.makedirs(project_dir)
+    file_path = os.path.join(project_dir, filename)
+
+    print(file_path)
+    # file.save(filepath)
+    file.save(file_path)
+    # os.environ['CSV_PATH'] = filepath
+    # global db
+    # db = create_db_for_data_path(S3_Client)
     return {'message': 'CSV data received and processed successfully'}
 
 

@@ -5,6 +5,8 @@ export interface Hits {
     hits: Hit[];
 }
 
+export type prompt = ""
+
 export type LabelType = "relevant" | "animal" | "description" | "keywords";
 
 export interface Hit {
@@ -106,7 +108,6 @@ interface RemoveLabelResponse {
 }
 
 export async function removeLabel(image_path: string, label: string, table: string): Promise<RemoveLabelResponse> {
-    console.log("api.removeLabel()", image_path, label, table);
 
     const response = await fetchJSON<RemoveLabelResponse>("/remove_label", {
         image_path,
@@ -128,17 +129,74 @@ export function downloadFile() {
     document.body.removeChild(link);
 }
 
-export async function loadCSV(csv: any) {
+
+export async function uploadPromptText(text: string, ProjectId: string) {
+    const url = `${API_URL}/load/create_prompt`;
+    let responseMessage = ''
+    console.log(url)
+
+    try {
+        const response = await fetch (url, {
+            method: 'POST',
+            body: JSON.stringify({text, ProjectId}),
+            headers: { 'Content-Type': 'application/json'
+            }
+        })
+        if (response.ok) {
+            const responseData = await response.json();
+            responseMessage = 'Prompt loaded successfully';
+            console.log('Prompt loaded successfully:', responseData);
+        } else {
+            responseMessage = 'Failed to load Prompt';
+            console.error('Failed to load Prompt:', response.statusText);
+        }
+    } catch (error) {
+        responseMessage = 'Error loading Prompt';
+        console.error('Error loading Prompt:', error);
+    }
+    return responseMessage;
+}
+
+
+export async function startLTSDataGeneration(ProjectId: string) {
+    const url = `${API_URL}/start_lts_generation`;  // Replace API_URL with your actual backend URL
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ProjectId}),
+        headers: {
+          'Content-Type': 'application/json',  // Ensure you are sending JSON
+        },
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('LTS Data Generator started successfully', responseData);
+        return responseData;
+      } else {
+        console.error('Failed to start LTS Data Generator:', response.statusText);
+        throw new Error('Failed to start LTS Data Generator');
+      }
+    } catch (error) {
+      console.error('Error in starting LTS Data Generator:', error);
+      throw error;
+    }
+  }
+
+
+export async function loadCSV(csv: any, ProjectId: string) {
     const url = `${API_URL}/load/csv_data`;
     let responseMessage = ''
 
     try {
         // Create a Blob with the CSV data and specify the line endings
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;'});
 
         // Create FormData and append the Blob
         const formData = new FormData();
         formData.append('file', blob, 'filename.csv');
+        formData.append('projectId', ProjectId);
 
         // Send the FormData using fetch
         const response = await fetch(url, {
