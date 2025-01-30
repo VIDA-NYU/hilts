@@ -10,23 +10,22 @@
   import LabeledData from "./lib/LabeledData.svelte";
   import CSVLoader from "./lib/CSVLoader.svelte"; // Import the CSV Loader component
   import SearchText from "./lib/SearchText.svelte";
-
+  import TrainingOutput from "./lib/TrainingOutput.svelte";
   export let url = "";
 
   onMount(async () => {
-    console.log("Loading positive keywords");
-    const remotePositivekeywords = await api.loadLabels("description");
-    descriptionsStore.update((labels: string[]) => [
-      ...new Set([...labels, ...remotePositivekeywords.labels]),
-    ]);
+    // console.log("Loading positive keywords");
+    // const remotePositivekeywords = await api.loadLabels("description");
+    // descriptionsStore.update((labels: string[]) => [
+    //   ...new Set([...labels, ...remotePositivekeywords.labels]),
+    // ]);
 
-    console.log("Loading negative keywords");
-    const remoteNegativekeywords= await api.loadLabels("keywords");
-    negativeKeywordStore.update((labels: string[]) => [
-      ...new Set([...labels, ...remoteNegativekeywords.labels]),
-    ]);
-
-    console.log("Labels loaded");
+    // console.log("Loading negative keywords");
+    // const remoteNegativekeywords= await api.loadLabels("keywords");
+    // negativeKeywordStore.update((labels: string[]) => [
+    //   ...new Set([...labels, ...remoteNegativekeywords.labels]),
+    // ]);
+    // console.log("Labels loaded");
   });
 
   function getLinkProps(args: Object): Object {
@@ -60,6 +59,7 @@
         <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
           <div class="navbar-nav nav-underline">
             <Link to="/csv-loader" getProps={getLinkProps}>Setup Tracker</Link>
+            <Link to="/result" getProps={getLinkProps}>LTS Results</Link>
             <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link>
             <Link to="/" getProps={getLinkProps}>Keyword Search</Link>
             <Link to="/search/random" getProps={getLinkProps}>Random Search</Link>
@@ -82,6 +82,7 @@
       <Route path="/labels" component={LabeledData} />
       <Route path="/search/seller" component={SearchText} />
       <Route path="/csv-loader" component={CSVLoader} /> <!-- Add the route for CSV Loader -->
+      <Route path="/result" component={TrainingOutput} />
       <Route path="/bootstrap" component={BootstrapComponents} />
     </div>
   </Router>

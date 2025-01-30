@@ -1,5 +1,16 @@
+// export const animals = [
+//   "shark","mako","thresher","hammerhead","whaler","dogfish","spurdog","smooth hound","tope", "ray","skate","guitarfish","wedgefish","sawfish","manta","chimaera","ghost shark","spookfish","elephantfish",
+// ];
+
 export const animals = [
-  "shark","mako","thresher","hammerhead","whaler","dogfish","spurdog","smooth hound","tope", "ray","skate","guitarfish","wedgefish","sawfish","manta","chimaera","ghost shark","spookfish","elephantfish",
+      'Struthio camelus', 'Canis lupus', 'Caracal caracal', 'Cervus elaphus', 'Elephas maximus', 'Leopardus', 'Leopardus geoffroyi',
+      'Leopardus pardalis', 'Leopardus tigrinus', 'Leopardus wiedii', 'Loxodonta africana', 'Lutrinae', 'Lynx', 'Manis',
+      'Panthera onca', 'Panthera pardus', 'Panthera tigris', 'Physeter macrocephalus', 'Puma concolor', 'Rhinocerotidae',
+      'Ursus', 'Vicugna vicugna', 'Alligator', 'Alligatoridae', 'Boa constrictor', 'Boidae', 'Caiman', 'Caiman crocodilus',
+      'Caiman latirostris', 'Chelonia mydas', 'Cheloniidae', 'Crocodylia', 'Crocodylidae', 'Crocodylus', 'Crocodylus acutus',
+      'Crocodylus cataphractus', 'Crocodylus moreletii', 'Crocodylus niloticus', 'Crocodylus porosus', 'Crocodylus siamensis',
+      'Eretmochelys imbricata', 'Heloderma', 'Melanosuchus niger', 'Osteolaemus tetraspis', 'Python', 'Pythonidae', 'Python molurus',
+      'Varanus'
 ];
 
 export const negativeKeywords = [
@@ -33,5 +44,5 @@ export const negativeKeywords = [
 ];
 
 export const descriptions = [
-  "jaw","tooth","teeth","vertebra","fin","head","taxidermy","specimen","wing","barb","rostrum",
+  "leather","boot","skin","bag",
 ];

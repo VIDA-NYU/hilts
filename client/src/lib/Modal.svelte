@@ -1,7 +1,20 @@
 <script>
   export let showModal; // boolean
+  export let closeBtnName = "Close";
+  export let onCloseAction;
 
   let dialog; // HTMLDialogElement
+
+  function handleClose() {
+    // Trigger any custom close action
+    if (onCloseAction) {
+      onCloseAction();
+      dialog.close()
+    }
+
+    // Close the dialog
+    dialog.close()
+  }
 
   $: if (dialog && showModal) dialog.showModal();
 </script>
@@ -21,13 +34,19 @@
       <slot name="body" />
     </div>
     <!-- svelte-ignore a11y-autofocus -->
-    <button class="btn btn-primary" autofocus on:click={() => dialog.close()}>close</button>
-  </div>
+    <button class="btn btn-primary" on:click={handleClose}>
+      {#if closeBtnName !== 'Close'}
+        {closeBtnName}  <!-- Custom Close Button Text -->
+      {:else}
+        Close <!-- Default Close Text -->
+      {/if}
+    </button>
+    </div>
 </dialog>
 
 <style>
   dialog {
-    max-width: 32em;
+    max-width: 40em;
     border-radius: 0.2em;
     border: none;
     padding: 0;
