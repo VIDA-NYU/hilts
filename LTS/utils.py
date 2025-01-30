@@ -2,29 +2,29 @@ import pandas as pd
 import numpy as np
 import os
 import json
-from random_sampling import RandomSampler
-from fine_tune import BertFineTuner
-from thompson_sampling import ThompsonSampler
+from .random_sampling import RandomSampler
+from .fine_tune import BertFineTuner
+from .thompson_sampling import ThompsonSampler
+from .clustering import TextClustering
 
-def load_data_with_lda(filename, preprocessor, cluster_size, id):
+def create_clustered_data(preprocessor, algorithm, cluster_size, project_id):
     """
     Load data from a CSV file and apply LDA if necessary.
     Returns the processed DataFrame.
     """
     try:
-        data = pd.read_csv(id + "/" + filename + "_lda.csv")
+        data = pd.read_csv(project_id + "/" + "filename" + "_cluster_data.csv")
         print("Using data saved on disk")
     except FileNotFoundError:
-        print("Creating LDA")
-        data = pd.read_csv(id + "/" + filename + ".csv")
+        data = pd.read_csv(project_id + "/" + "filename" + ".csv")
         data = preprocessor.preprocess_df(data)
-        from lda import LDATopicModel  # Import here to avoid circular imports
-        lda_topic_model = LDATopicModel(num_topics=int(cluster_size))
-        topics = lda_topic_model.fit_transform(data['clean_title'].to_list())
-        data["label_cluster"] = topics
-        data.to_csv(id + "/" + filename + "_lda.csv", index=False)
-        print("LDA created")
+
+        print("Creating LDA")
+        clustering = TextClustering(data, "title", cluster_size, algorithm, project_id)
+        clustering.preprocess_text()
+        data = clustering.perform_clustering()
     return data
+
 
 def save_validation_data(validation, filename):
     """
@@ -90,9 +90,9 @@ def prepare_validation(validation_path, validation_size, data, labeler, preproce
         save_validation_data(validation, f"{id}/validation.csv")
     return validation
 
-def initialize_trainer(model, model_finetune, validation, id):
+def initialize_trainer(model, model_finetune, validation, project_id):
     if model == "text":
-        return BertFineTuner(model_finetune, None, validation, id=id)
+        return BertFineTuner(model_finetune, None, validation, project_id=project_id)
     else:
         raise NotImplementedError
 
@@ -103,4 +103,13 @@ def initialize_sampler(sampling, cluster_size, id):
         return RandomSampler(cluster_size, id)
     else:
         raise ValueError("Choose one of thompson or random")
+
+def load_and_save_csv(filename, data):
+    if os.path.exists(f"{filename}.csv"):
+        train_data = pd.read_csv(f"{filename}.csv")
+        train_data = pd.concat([train_data, data])
+        train_data.to_csv(f"{filename}.csv", index=False)
+    else:
+        data.to_csv(f"{filename}.csv", index=False)
+
 

@@ -19,10 +19,18 @@ class RandomSampler:
         return self.selected_ids
 
     def create_validation_data(self, df, val_size):
+        if val_size < self.n_bandits:
+            samples_per_cluster = 1
         samples_per_cluster = int(val_size / self.n_bandits)
-
         # Sample data from each cluster
+        # sampled_data = []
         sampled_data = df.groupby('label_cluster').apply(lambda x: x.sample(n=min(samples_per_cluster, len(x)), random_state=1)).reset_index(drop=True)
+        # print(df.groupby('label_cluster').groups)
+        # for name, group in df.groupby('label_cluster'):
+        #     sample = group.sample(n=min(samples_per_cluster, len(group)), random_state=1)
+        #     print(sample)
+        #     sampled_data.append()
+        # sampled_data = pd.concat(sampled_data)
         sampled_data = sampled_data.sample(frac=1, random_state=42).reset_index(drop=True)
         # Add the IDs of sampled data to the selected_ids set to not add this data on the training set
         self.selected_ids.update(sampled_data['id'])

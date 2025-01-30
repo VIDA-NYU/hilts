@@ -349,3 +349,18 @@ class VectorDB:
             shutil.make_archive(zip_path[:-4], "zip", tmpdir)
 
             return zip_path
+
+
+    def create_labeled_data(self, projectId) -> str:
+        result, column_names = self.labelsdb.create_zip_labeled_data()
+        df = pd.DataFrame(result, columns=column_names)
+        print(df)
+        original_df = pd.read_csv(f"{projectId}/current_sample_training.csv")
+        original_df = original_df.set_index("image_path")
+        cols_to_use = df.columns.difference(original_df.columns)
+        # join both
+        original_df.join(df[cols_to_use], on="image_path")
+        df["relevant_"] = np.where(df["relevant"] == "not animal origin", 0,1)
+        df["relevant_"] = np.where(df["relevant"].isnull(), None, df["relevant_"])
+        df["label"] = np.where(df["relevant_"].isnull(), df["label"], df["relevant_"])
+        df.to_csv(f"{projectId}/current_sample_training.csv", index=False)

@@ -2,17 +2,23 @@ import pandas as pd
 import numpy as np
 import os
 import json
+from .utils import load_and_save_csv
+from .config import update_config
 
-def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, retrain, indx, id):
-    training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer)
+def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, id):
+    training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename)
     ## Generate labels
     if labeling != "file":
         training_data = labeler.generate_inference_data(training_data, 'clean_title')
         training_data["answer"] = training_data.apply(lambda x: labeler.predict_animal_product(x), axis=1)
         training_data["answer"] = training_data["answer"].str.strip()
-        training_data["label"] = np.where(validation["answer"].str.contains("not a relevant animal"), 0, 1)
-        file_name = f"{id}{filename}_data_labeled.csv"
+        training_data["label"] = np.where(training_data["answer"].str.contains("not a relevant product"), 0, 1)
+        training_data["label"] = training_data["label"].astype(int)
+        file_name = f"{id}/{filename}_data_labeled"
+        # update to the complete labeled file
         load_and_save_csv(file_name, training_data)
+        # save current sample for possible label update
+        training_data.to_csv(f"{id}/current_sample_training.csv", index=False)
 
     if sampler.__class__.__name__ == "ThompsonSampler":
         sampler.update(chosen_bandit, training_data)
@@ -35,9 +41,7 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         print(f"Model improved")
         model_name = f"{id}/models/fine_tunned_{indx}_bandit_{chosen_bandit}"
         trainer.update_model(model_name, results[f"eval_{metric}"], save_model=True)
-        # remove used positive data
-        if os.path.exists(f'{id}/positive_data.csv'):
-            os.remove(f'{id}/positive_data.csv')
+        update_config(id, {"model_finetune": model_name, "budget": indx, "baseline": baseline})
         # save separated training data file
         name = f'{id}/{filename}_training_data'
         load_and_save_csv(name, training_data)
@@ -51,15 +55,8 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         load_and_save_csv(f"{id}/positive_data", training_data[training_data["label"]==1])
 
     save_bendit_results(filename, chosen_bandit, results, id)
+    return results
 
-
-def load_and_save_csv(filename, data):
-    if os.path.exists(f"{filename}.csv"):
-        train_data = pd.read_csv(f"{filename}.csv")
-        train_data = pd.concat([train_data, data])
-        train_data.to_csv(f"{filename}.csv", index=False)
-    else:
-        data.to_csv(f"{filename}.csv", index=False)
 
 
 def add_previous_data(df, id):
@@ -67,10 +64,8 @@ def add_previous_data(df, id):
         pos = pd.read_csv(f'{id}/positive_data.csv')
         df = pd.concat([df, pos]).sample(frac=1)
         print(f"adding positive data: {df['label'].value_counts()}")
-    # if os.path.exists(f'{filename}_previous_data.csv'):
-    #     old = pd.read_csv(f'{filename}_previous_data.csv')
-    #     df = pd.concat([df, old]).sample(frac=1)
-    #     print(f"adding previous data: {df['label'].value_counts()}")
+        # we try this data only one more time if does not improve it's not a good sample
+        os.remove(f'{id}/positive_data.csv')
     return df
 
 def maybe_balance_data(balance, df):

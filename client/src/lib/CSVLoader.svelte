@@ -147,7 +147,7 @@
 
     {#if projectId}
       <div class="mt-2">
-        <p><strong>Your Project ID: {projectId}</strong></p>
+        <p><strong>Project Name: {projectId}</strong></p>
       </div>
     {/if}
   </div>

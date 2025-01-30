@@ -11,8 +11,8 @@ from torch import nn
 import os
 
 class BertFineTuner:
-    def __init__(self, model_name: Optional[str], training_data: Optional[pd.DataFrame], test_data: Optional[pd.DataFrame],weight_decay= 0.01, learning_rate=2e-5, dropout=0.2, id="default"):
-        self.id = id
+    def __init__(self, model_name: Optional[str], training_data: Optional[pd.DataFrame], test_data: Optional[pd.DataFrame],weight_decay= 0.01, learning_rate=2e-5, dropout=0.2, project_id="default"):
+        self.project_id = project_id
         self.base_model = model_name
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -97,16 +97,24 @@ class BertFineTuner:
         }
 
     def train_data(self, df, still_unbalenced):
-        early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir="log", id=self.id)
+        early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir="log", project_id=self.project_id)
 
         tokenized_data, data_collator = self.create_dataset(df, self.test_data)
+
+        import os
+
+        # Ensure the directories exist
+        log_dir_path = f"{self.project_id}/log"
+
+        # Create the directory if it doesn't exist
+        os.makedirs(log_dir_path, exist_ok=True)
 
         # Define training arguments
         training_args = TrainingArguments(
             output_dir="results",
             evaluation_strategy="epoch",
             save_strategy="epoch",
-            metric_for_best_model="eval_accuracy",
+            metric_for_best_model="eval_f1",
             per_device_train_batch_size=32,
             per_device_eval_batch_size=32,
             num_train_epochs=20,
@@ -214,23 +222,48 @@ class MyTrainer(Trainer):
             preprocess_logits_for_metrics: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None):
         super().__init__(model, args, data_collator, train_dataset, eval_dataset, tokenizer, model_init, compute_metrics, callbacks, optimizers, preprocess_logits_for_metrics)
 
-    def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.pop("labels")
+    # def compute_loss(self, model, inputs, return_outputs=False):
+    #     labels = inputs.pop("labels")
 
-        # forward pass
+    #     # forward pass
+    #     outputs = model(**inputs)
+    #     logits = outputs.get("logits")
+    #     loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([0.3, 0.7], device=model.device))
+    #     loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+    #     return (loss, outputs) if return_outputs else loss
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        # Pop labels from inputs
+        labels = inputs.pop("labels").type(torch.LongTensor)
+
+        # Forward pass: Get logits from the model
         outputs = model(**inputs)
         logits = outputs.get("logits")
-        loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([0.3, 0.7], device=model.device))
-        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
-        return (loss, outputs) if return_outputs else loss
 
+        # Ensure logits and labels are on the same device
+        device = model.device if hasattr(model, 'device') else torch.device('cpu')
+        logits = logits.to(device)
+        labels = labels.to(device)
+
+        # Define the loss function with class weights
+        loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([0.3, 0.7], device=device))
+
+        # Reshape logits and labels for CrossEntropyLoss
+        logits = logits.view(-1, self.model.config.num_labels)  # Flatten logits (batch_size * sequence_length, num_labels)
+        labels = labels.view(-1)  # Flatten labels to be (batch_size * sequence_length,)
+
+        # Compute the loss
+        loss = loss_fct(logits, labels)
+
+        # Return loss or loss + outputs
+        return (loss, outputs) if return_outputs else loss
 
 
 from transformers import TrainerCallback, Trainer
 
 class EarlyStoppingCallback(TrainerCallback):
-    def __init__(self, patience=5, log_dir=None, id="default"):
-        self.id = id
+    def __init__(self, patience=5, log_dir=None, project_id="default"):
+        self.project_id = project_id
         self.patience = patience
         self.best_loss = float('inf')
         self.wait = 0
@@ -252,6 +285,6 @@ class EarlyStoppingCallback(TrainerCallback):
                         control.should_training_stop = True
                 # Save logs
                 if self.log_dir:
-                    with open(f"{self.id}/{self.log_dir}/epoch_{state.epoch}.txt", "w") as f:
+                    with open(f"{self.project_id}/{self.log_dir}/epoch_{state.epoch}.txt", "w") as f:
                         for log in state.log_history:
                             f.write(f"{log}\n")
