@@ -1,5 +1,6 @@
 <script>
-  import * as api from "./Api";
+  import { ROW } from "vega-lite/build/src/channel";
+import * as api from "./Api";
   import Modal from "./Modal.svelte";
   import { projectName } from "./stores";
   export let dataToCSV = [];
@@ -113,11 +114,12 @@
 
 
 </script>
-
 <div class="container">
+  <div class="row">
+  <div class="col-4">
   <!-- Create Project ID Section -->
   <div class="py-4">
-    <h1>Enter Project Name</h1>
+    <!-- <h1 class="">Enter Project Name</h1> -->
     <div class="form-group">
       <label for="projectIdInput">Project Name</label>
       <input
@@ -154,7 +156,7 @@
 
   <!-- Load Data Section -->
   <div class="py-4">
-    <h1>Load Data</h1>
+    <!-- <h1>Load Data</h1> -->
     <p>Select a dataset file</p>
     <input
       bind:this={uploader}
@@ -182,64 +184,16 @@
       {/if}
     </div>
   </div>
-
-  <!-- Write and Upload Prompt Section -->
-  <!-- <div class="py-4">
-    <h2>Write and Upload Prompt</h2>
-    <textarea bind:value={writingText} rows="5" class="form-control" style="max-width:400px" placeholder="Write your prompt here..."></textarea>
-    <div class="pt-2">
-      <button class="btn btn-primary" on:click={uploadPrompt}>
-        <span class="fa fa-upload mr-2" />
-        Upload Prompt
-      </button>
-    </div>
-
-    <div class="mt-2">
-      {#if uploading}
-        <span>
-          <i class="fa fa-spinner fa-spin" aria-hidden="true" />
-          Uploading...
-        </span>
-      {:else if responseMessagePrompt}
-        <div>
-          <p>{responseMessagePrompt}</p>
-        </div>
-      {/if}
-    </div>
-  </div> -->
-  <!-- <div class="py-4">
-      <h2>LTS Settings</h2>
-      <div class="pt-2">
-        <button class="btn btn-success" on:click={openModal}>
-          <span class="fa fa-cogs mr-2" />
-        Add settings
-        </button>
-      </div>
-
-      <div class="mt-2">
-        {#if uploading}
-          <span>
-            <i class="fa fa-spinner fa-spin" aria-hidden="true" />
-            Starting LTS Data Generator...
-          </span>
-        {:else if responseMessage}
-          <div>
-            <p>{responseMessage}</p>
-          </div>
-        {/if}
-      </div> -->
-  <!-- </div> -->
-
   <!-- Start LTS Data Generator Button -->
   <div class="py-4">
-    <h2>Start LTS Data Generator</h2>
+    <!-- <h2>Start LTS Data Generator</h2> -->
     <div class="pt-2">
       <button class="btn btn-success" on:click={() => (showModal = true)}>
         <span class="fa fa-cogs mr-2" />
         LTS settings
       </button>
       <div class="pt-2">
-        <button    on:click={startLTSGenerator}>
+        <button class="btn btn-success" on:click={startLTSGenerator}>
           <span class="fa fa-cogs mr-2" />
           Start LTS Generator
         </button>
@@ -259,7 +213,11 @@
       </div>
     </div>
   </div>
+  </div>
+  </div>
 </div>
+
+
 <!-- Modal for LTS Data Generator -->
 <Modal bind:showModal={showModal} closeBtnName="Save" onCloseAction={updateArgs}>
   <h2 slot="header">LTS Settings</h2>
@@ -378,7 +336,20 @@
           bind:value={cluster_size}
         />
       </div>
-
+      </div>
     </div>
   </div>
 </Modal>
+
+
+
+<style>
+  h1{
+    color: #636363
+  }
+  .container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+</style>
