@@ -51,8 +51,8 @@ class ThompsonSampler:
 
         if labeling == "file":
             if os.path.exists(f"{self.project_id}/{filename}.csv"):
-                new_labels_df = pd.read_csv("hil_data.csv")
-                self.update_labels( filename, new_labels_df)
+                new_labels_df = pd.read_csv("hilts_data.csv")
+                self.update_labels(filename, new_labels_df)
             return new_labels_df, new_labels_df["label_cluster"].unique()[0]
 
         #remove already used data

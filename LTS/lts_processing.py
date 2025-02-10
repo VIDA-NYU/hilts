@@ -20,6 +20,7 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         # save current sample for possible label update
         training_data.to_csv(f"{id}/current_sample_training.csv", index=False)
 
+
     if sampler.__class__.__name__ == "ThompsonSampler":
         sampler.update(chosen_bandit, training_data)
 

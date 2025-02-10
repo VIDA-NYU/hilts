@@ -83,7 +83,7 @@ class LabelsDB:
         cursor.execute("SELECT DISTINCT image_path FROM relevant;")
         return [row[0] for row in cursor.fetchall()]
 
-    def create_zip_labeled_data(self) -> str:
+    def create_labeled_data(self) -> str:
         _, cursor = get_db_connection(self.db_file)
         query = """
             SELECT

@@ -1,20 +1,25 @@
 <script lang="ts">
   import type { Hits } from "./Api";
-  import { random } from "./Api";
+  import { randomHILTS } from "./Api";
   import ImageCard from "./ImageCard.svelte";
   import LabelAll from "./LabelAll.svelte";
-  import { selectedDataStore } from "./stores";
+  import { selectedDataStore, projectName } from "./stores";
 
   let result: Promise<Hits> | null = null;
   let limit: string = "16";
   let allSelectedData: {[key: string]: boolean; };
+  let projectId: string = "default";
 
   selectedDataStore.subscribe((storeSelectedData) => {
     allSelectedData = storeSelectedData;
   });
 
+  projectName.subscribe((name) => {
+    projectId = name;
+  });
+
   function onQuerySubmit() {
-    result = random(+limit);
+    result = randomHILTS(+limit, projectId);
     result.then( (hits: Hits) => {
       if (result) {
         const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));

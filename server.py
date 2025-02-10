@@ -1,6 +1,6 @@
 from datetime import datetime
 import os
-import random
+import pandas as pd
 from flask import Flask, send_from_directory, send_file, request, jsonify
 from flask_socketio import SocketIO
 from mmdx.search import VectorDB
@@ -48,6 +48,16 @@ def test_message(message):
 def test_message(message):
     global stop_task
     stop_task = False
+    socketio.start_background_task(target=train_model, message=message)
+    socketio.emit('my response', {'message': 'Training started!'})
+
+@socketio.on('start retrain')
+def test_message(message):
+    global stop_task
+    stop_task = False
+    db.create_hilts_data(
+        dirc=message["projectId"]
+    )
     socketio.start_background_task(target=train_model, message=message)
     socketio.emit('my response', {'message': 'Training started!'})
 
@@ -190,98 +200,162 @@ def start_lts_generation():
     except Exception as e:
         return {'message': f'Config file not create {e}'}
 
-# def train_model(message):
-#     project_id = message["data"]
-#     args, sampler, data, trainer, labeler = initialize_LTS(project_id)
-#     budget = args.get("budget")
-#     budget_value = int(args.get("bugetValue"))
-#     training_results = []
-#     if budget == "trainingSize":
-#         loops = int(budget_value/args.get("sample_size"))
-#         for idx in range(loops):
-#             if stop_task:
-#                 print("Training stopped!")
-#                 break
-#             result =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), args.get("labeling"), idx, project_id)
-#             result = {
-#                 "step": idx,
-#                 "precision": result["eval_precision"],
-#                 "recall": result["eval_recall"],
-#                 "f1_score": result["eval_f1"],
-#                 "accuracy": result["eval_accuracy"]
-#             }
-#             training_results.append(result)
-#             socketio.emit('my response', result)
-#             time.sleep(120)
-
-#     elif budget=="metric":
-#         generate = True
-#         idx = 0
-#         while generate:
-#             if stop_task:
-#                 print("Training stopped!")
-#                 break
-#             result = LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), args.get("labeling"), idx, project_id)
-#             if result[f'eval_{args.get("metric")}'] >= budget_value:
-#                 generate = False
-#             idx+=1
-#             result = {
-#                 "step": idx,
-#                 "precision": result["eval_precision"],
-#                 "recall": result["eval_recall"],
-#                 "f1_score": result["eval_f1"],
-#                 "accuracy": result["eval_accuracy"]
-#             }
-
-#             training_results.append(result)
-
-#             # Emit the training result after each step
-#             socketio.emit('my response', result)
-#             time.sleep(120)
-
-#     if not stop_task:
-#         socketio.emit('my response', {'message': 'Training complete!'})
-#     else:
-#         socketio.emit('my response', {'message': 'Training stopped by user'})
-    # Emit a final message when training is complete
-
 def train_model(message):
-    print(message)
-    projectId = message.get("projectId")
+    import numpy as np
+    label_hilts = message.get("labeling")
+    project_id = message["projectId"]
+    args, sampler, data, trainer, labeler = initialize_LTS(project_id)
+    budget = args.get("budget")
+    budget_value = int(args.get("bugetValue"))
+    training_results = []
+    if budget == "trainingSize":
+        loops = int(budget_value/args.get("sample_size"))
+        for idx in range(loops):
+            if stop_task:
+                print("Training stopped!")
+                break
+            if idx == 0 and label_hilts =="file":
+                label = label_hilts
+            else:
+                label = args.get("labeling")
+            result =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, project_id)
+            result = {
+                "step": idx,
+                "precision": result["eval_precision"],
+                "recall": result["eval_recall"],
+                "f1_score": result["eval_f1"],
+                "accuracy": result["eval_accuracy"]
+            }
+            training_results.append(result)
+            socketio.emit('my response', result)
+            data = pd.read_csv(f"{project_id}/current_sample_training.csv")
+            data["relevant"] = np.where(data["label"]==1, "animal origin", "not animal origin")
+            global db
+            for _, row in data.iterrows():
+                db.add_label(image_path=row["image_path"], label=row["relevant"], table="relevant")
+            time.sleep(120)
 
-    if message.get("labeling") == "file":
-        db.create_labeled_data(projectId)
+    elif budget=="metric":
+        generate = True
+        idx = 0
+        while generate:
+            if stop_task:
+                print("Training stopped!")
+                break
+            result = LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), args.get("labeling"), idx, project_id)
+            if result[f'eval_{args.get("metric")}'] >= budget_value:
+                generate = False
+            idx+=1
+            result = {
+                "step": idx,
+                "precision": result["eval_precision"],
+                "recall": result["eval_recall"],
+                "f1_score": result["eval_f1"],
+                "accuracy": result["eval_accuracy"]
+            }
 
-    for idx in range(0, 4):
-        if stop_task:
-            print("Training stopped!")
-            break
-        # Fake evaluation metrics (you can replace with actual metrics from your model)
-        precision = random.uniform(0.6, 1.0)  # Fake precision value between 0.6 and 1.0
-        recall = random.uniform(0.6, 1.0)     # Fake recall value between 0.6 and 1.0
-        f1_score = 2 * (precision * recall) / (precision + recall)  # Fake f1_score formula
-        accuracy = random.uniform(0.6, 1.0)  # Fake accuracy value between 0.6 and 1.0
+            training_results.append(result)
 
-        result = {
-            "step": idx,
-            "precision": round(precision, 4),
-            "recall": round(recall, 4),
-            "f1_score": round(f1_score, 4),
-            "accuracy": round(accuracy, 4)
-        }
-
-        # Emit the result via SocketIO
-        socketio.emit('my response', result)
-
-        # Wait for 10 seconds before the next emission
-        time.sleep(10)
+            # Emit the training result after each step
+            socketio.emit('my response', result)
+            time.sleep(120)
 
     if not stop_task:
         socketio.emit('my response', {'message': 'Training complete!'})
     else:
         socketio.emit('my response', {'message': 'Training stopped by user'})
     # Emit a final message when training is complete
-    socketio.emit('my response', {'message': 'Training complete!'})
+
+# def train_model(message):
+#     print(message)
+#     projectId = message.get("projectId")
+
+#     #     db.create_labeled_data(projectId)
+
+#     models = { 0 :{
+#         "step": 0,
+#         "precision": 0.55,
+#         "recall": 0.50,
+#         "f1_score": 0.525,
+#         "accuracy": 0.45
+#     },
+#     1 : {
+#         "step": 1,
+#         "precision": 0.65,
+#         "recall": 0.60,
+#         "f1_score": 0.625,
+#         "accuracy": 0.55
+#     },
+#     2 : {
+#         "step": 2,
+#         "precision": 0.60,
+#         "recall": 0.55,
+#         "f1_score": 0.575,
+#         "accuracy": 0.50
+#     },
+#     3 : {"step": 3,
+#         "precision": 0.55,
+#         "recall": 0.50,
+#         "f1_score": 0.525,
+#         "accuracy": 0.45
+#     },
+#     4 : {
+#         "step": 4,
+#         "precision": 0.85,
+#         "recall": 0.80,
+#         "f1_score": 0.825,
+#         "accuracy": 0.75
+#     },
+#     5 : {
+#         "step": 5,
+#         "precision": 0.90,
+#         "recall": 0.85,
+#         "f1_score": 0.875,
+#         "accuracy": 0.80}
+#         }
+
+
+#     for idx in range(0, 6):
+#         if idx ==0:
+#             time.sleep(10)
+#         if stop_task:
+#             print("Training stopped!")
+#             break
+#         # Fake evaluation metrics (you can replace with actual metrics from your model)
+
+#         # precision = random.uniform(0.6, 1.0)  # Fake precision value between 0.6 and 1.0
+#         # recall = random.uniform(0.6, 1.0)     # Fake recall value between 0.6 and 1.0
+#         # f1_score = 2 * (precision * recall) / (precision + recall)  # Fake f1_score formula
+#         # accuracy = random.uniform(0.6, 1.0)  # Fake accuracy value between 0.6 and 1.0
+
+#         # result = {
+#         #     "step": idx,
+#         #     "precision": round(precision, 4),
+#         #     "recall": round(recall, 4),
+#         #     "f1_score": round(f1_score, 4),
+#         #     "accuracy": round(accuracy, 4)
+#         # }
+#         result = models[idx]
+
+#         # Emit the result via SocketIO
+#         socketio.emit('my response', result)
+#         socketio.emit('my response', result)
+#         socketio.emit('my response', result)
+#         socketio.emit('my response', result)
+
+#         # Wait for 10 seconds before the next emission
+#         if message.get("labeling") == "file":
+#             if idx >=3:
+#                 time.sleep(15)
+#         else:
+#             time.sleep(15)
+
+#     if not stop_task:
+#         socketio.emit('my response', {'message': 'Training complete!'})
+#     else:
+#         socketio.emit('my response', {'message': 'Training stopped by user'})
+#     # Emit a final message when training is complete
+#     socketio.emit('my response', {'message': 'Training complete!'})
 
 @app.route("/api/v1/load/csv_data", methods=['POST'])
 def create_database():
@@ -310,12 +384,14 @@ def create_database():
 
     # file.save(filepath)
     file.save(file_path)
+    global db
+    db = create_db_for_data_path(S3_Client)
 
     return {'message': 'CSV data received and processed successfully'}
 
 
 def create_db_for_data_path(S3_Client):
-    data_path = DATA_PATH
+    data_path = "images-february24" #DATA_PATH
     db_path = DB_PATH
 
     if DATA_SOURCE.upper() == "S3":

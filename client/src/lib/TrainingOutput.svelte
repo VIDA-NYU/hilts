@@ -29,12 +29,14 @@
   let isTrainingComplete = false;
   let steps_training = [];
 
-  const updateChartData = (msg) => {
-    chartData.precision.push(msg.precision);
-    chartData.recall.push(msg.recall);
-    chartData.f1_score.push(msg.f1_score);
-    chartData.accuracy.push(msg.accuracy); // Adding accuracy data
-  };
+  updateChartData = (msg) => {
+  if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
+    msg.precision.forEach(value => chartData.precision.push(value));
+    msg.recall.forEach(value => chartData.recall.push(value));
+    msg.f1_score.forEach(value => chartData.f1_score.push(value));
+    msg.accuracy.forEach(value => chartData.accuracy.push(value));
+    }
+  }
 
   const createChart = () => {
     const x0 = d3
@@ -161,7 +163,7 @@
   });
 
   async function interference() {
-    socket.emit("stop_training", { projectId: projectId, labeling: "file"});
+    socket.emit("stop_training", { projectId: projectId, labeling: ""});
   }
 
   async function startTraining() {
@@ -169,12 +171,12 @@
   }
 
   async function restartTraining() {
-    socket.emit("start training", { projectId: projectId , labeling: "file"});
+    socket.emit("start retrain", { projectId: projectId , labeling: "file"});
   }
 </script>
 
-<div class="container">
-  <h1>LTS Data Generator</h1>
+<div class="container-fluid px-5">
+  <h1>LTS</h1>
   <h3>Current Project ID: {projectId}</h3>
   <!-- Button to start training -->
   <button
@@ -298,5 +300,11 @@
 <style>
   .danger {
     background-color: #f44336;
+  }
+  h1{
+    color: #636363
+  }
+  h3{
+    color: #636363
   }
 </style>

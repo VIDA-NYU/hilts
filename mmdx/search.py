@@ -322,18 +322,46 @@ class VectorDB:
         print(df_hits["labels_types_dict"])
         return df_hits
 
+    # def create_hilts_data(self,
+    #         dirc: str):
+    #     result, column_names = self.labelsdb.create_labeled_data()
+    #     df = pd.DataFrame(result, columns=column_names)
+    #     current_dir = os.getcwd()
+    #     file_path = os.path.join(current_dir, f"{dirc}/filename.csv")
+    #     original_df = pd.read_csv(file_path)
+
+    #     original_df['image_path'] = original_df['image_path'].astype(str)
+    #     df['image_path'] = df['image_path'].astype(str)
+
+    #     original_df = original_df.set_index("image_path")
+    #     cols_to_use = df.columns.difference(original_df.columns)
+    #     print(df)
+    #     print("")
+    #     print(original_df)
+
+    #     # join both
+    #     df = original_df.join(df[cols_to_use], how="left", on="image_path")
+
+    #     print(len(df))
+    #     # df = df.join(original_df[cols_to_use], on="image_path")
+    #     df = df.drop_duplicates("image_path")
+    #     df["relevant_"] = np.where(df["relevant"] == "not animal origin", 0,1)
+    #     df["relevant_"] = np.where(df["relevant"].isnull(), None, df["relevant_"])
+    #     df["label"] = np.where(df["relevant_"].isnull(), df["label"], df["relevant_"])
+    #     df.drop(["relevant", "relevant_"], axis=1, inplace=True)
+    #     df.to_csv(f"{dirc}/hilts_data.csv", index=False)
 
     def create_zip_labeled_binary_data(
             self,
             output_dir: str,
             filename: str) -> str:
-        result, column_names = self.labelsdb.create_zip_labeled_data()
+        result, column_names = self.labelsdb.create_labeled_data()
         os.makedirs(output_dir, exist_ok=True)
         df = pd.DataFrame(result, columns=column_names)
         original_path = os.environ.get("CSV_PATH")
         original_df = pd.read_csv(original_path)
         original_df = original_df.set_index("image_path")
-        cols_to_use = original_df.columns.difference(df.columns)
+        cols_to_use = df.columns.difference(original_df.columns)
         # join both
         df = df.join(original_df[cols_to_use], on="image_path")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -351,16 +379,15 @@ class VectorDB:
             return zip_path
 
 
-    def create_labeled_data(self, projectId) -> str:
-        result, column_names = self.labelsdb.create_zip_labeled_data()
+    def create_hilts_data(self, dirc) -> str:
+        result, column_names = self.labelsdb.create_labeled_data()
         df = pd.DataFrame(result, columns=column_names)
-        print(df)
-        original_df = pd.read_csv(f"{projectId}/current_sample_training.csv")
+        original_df = pd.read_csv(f"{dirc}/current_sample_training.csv")
         original_df = original_df.set_index("image_path")
         cols_to_use = df.columns.difference(original_df.columns)
         # join both
-        original_df.join(df[cols_to_use], on="image_path")
+        original_df = original_df.join(df[cols_to_use])
         df["relevant_"] = np.where(df["relevant"] == "not animal origin", 0,1)
         df["relevant_"] = np.where(df["relevant"].isnull(), None, df["relevant_"])
         df["label"] = np.where(df["relevant_"].isnull(), df["label"], df["relevant_"])
-        df.to_csv(f"{projectId}/current_sample_training.csv", index=False)
+        df.to_csv(f"{dirc}/hilts_data.csv", index=False)

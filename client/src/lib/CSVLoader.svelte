@@ -1,10 +1,8 @@
 <script>
-  import { ROW } from "vega-lite/build/src/channel";
-import * as api from "./Api";
+  import * as api from "./Api";
   import Modal from "./Modal.svelte";
   import { projectName } from "./stores";
   export let dataToCSV = [];
-  let prevDataToCSV;
 
   export let allowedFileExtensions = ["csv"];
 
@@ -14,8 +12,10 @@ import * as api from "./Api";
   let uploader;
   let writingText = ""; // Variable to bind the writing text
   let uploading = false; // Add a variable to track the uploading state
+  let saving = false;
   let responseMessage = "";
   let responseMessagePrompt = "";
+  let responseMessageSave = "";
 
   // LTS Generator parameters (added for the modal)
   let task_prompt = ""
@@ -85,15 +85,15 @@ import * as api from "./Api";
 
   // Start the LTS data generation
   async function startLTSGenerator() {
-    uploading = true;
+    saving = true;
     try {
       const response = await api.startLTSDataGeneration(projectId, argsDict); // Pass the entered project ID and argsDict to the API
-      responseMessage = "LTS Data Generation Started";
+      responseMessageSave = "Project Saved!";
       console.log(response);
     } catch (error) {
-      responseMessage = `Error starting LTS data generation: ${error.message}`;
+      responseMessageSave = `Error starting LTS data generation: ${error.message}`;
     }
-    uploading = false;
+    saving = false;
   }
 
   // Reset project ID function
@@ -114,9 +114,7 @@ import * as api from "./Api";
 
 
 </script>
-<div class="container">
-  <div class="row">
-  <div class="col-4">
+<div class="container-fluid px-5">
   <!-- Create Project ID Section -->
   <div class="py-4">
     <!-- <h1 class="">Enter Project Name</h1> -->
@@ -157,8 +155,9 @@ import * as api from "./Api";
   <!-- Load Data Section -->
   <div class="py-4">
     <!-- <h1>Load Data</h1> -->
-    <p>Select a dataset file</p>
+    <label for="projectData">Select Dataset</label>
     <input
+      id="projectData"
       bind:this={uploader}
       type="file"
       class="form-control"
@@ -186,34 +185,32 @@ import * as api from "./Api";
   </div>
   <!-- Start LTS Data Generator Button -->
   <div class="py-4">
-    <!-- <h2>Start LTS Data Generator</h2> -->
+    <label for="seetings">LTS Settings</label>
     <div class="pt-2">
-      <button class="btn btn-success" on:click={() => (showModal = true)}>
-        <span class="fa fa-cogs mr-2" />
-        LTS settings
+      <button class="btn btn-secondary" on:click={() => (showModal = true)}>
+        <!-- <span class="fa fa-cogs mr-2" /> -->
+        Update Settings
       </button>
       <div class="pt-2">
         <button class="btn btn-success" on:click={startLTSGenerator}>
           <span class="fa fa-cogs mr-2" />
-          Start LTS Generator
+          Save Project
         </button>
       </div>
 
       <div class="mt-2">
-        {#if uploading}
+        {#if saving}
           <span>
             <i class="fa fa-spinner fa-spin" aria-hidden="true" />
             Starting LTS Data Generator...
           </span>
-        {:else if responseMessage}
+        {:else if responseMessageSave}
           <div>
-            <p>{responseMessage}</p>
+            <p>{responseMessageSave}</p>
           </div>
         {/if}
       </div>
     </div>
-  </div>
-  </div>
   </div>
 </div>
 
@@ -277,7 +274,7 @@ import * as api from "./Api";
         </select>
       </div>
       <div class="col-6">
-        <label for="metric">Baseline Metric</label>
+        <label for="metric">Evaluation Metric</label>
         <select id="metric" class="form-control" bind:value={metric}>
           <option value="accuracy">Accuracy</option>
           <option value="f1">F1 Score</option>
@@ -285,7 +282,7 @@ import * as api from "./Api";
           <option value="recall">Precision</option>
         </select>
       </div>
-      <div class="col-6">
+      <!-- <div class="col-6">
         <label for="baseline">Baseline Metric Value</label>
         <input
           id="baseline"
@@ -293,7 +290,7 @@ import * as api from "./Api";
           class="form-control"
           bind:value={baseline}
         />
-      </div>
+      </div> -->
       <div class="col-6">
         <label for="validation_size">Validation Data Size</label>
         <input
@@ -322,8 +319,8 @@ import * as api from "./Api";
       <div class="col-6">
         <label for="cluster">Cluster</label>
         <select id="cluster" class="form-control" bind:value={cluster}>
-        <option value="hdbscan">HDBSCAN</option>
-        <option value="dbscan">DBSCAN</option>
+        <option value="hdbscan">GMM</option>
+        <option value="dbscan">AGGLO</option>
         <option value="kmeans">K-means</option>
         <option value="lda">LDA</option>
         </select>

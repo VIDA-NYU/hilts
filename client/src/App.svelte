@@ -11,6 +11,7 @@
   import CSVLoader from "./lib/CSVLoader.svelte"; // Import the CSV Loader component
   import SearchText from "./lib/SearchText.svelte";
   import TrainingOutput from "./lib/TrainingOutput.svelte";
+  import Dashboard from "./lib/Dashboard.svelte";
   export let url = "";
 
   onMount(async () => {
@@ -44,7 +45,9 @@
   <Router {url}>
     <nav class="navbar navbar-expand-lg sticky-top">
       <div class="container-fluid">
-        <Link class="navbar-brand fw-bold" to="/csv-loader">MMDX</Link>
+        <Link class="navbar-brand fw-bold" to="/csv-loader">
+          <img src="hilts-logo.png" style="max-height: 45px; padding-left: 10px"/>
+        </Link>
         <button
           class="navbar-toggler"
           type="button"
@@ -60,10 +63,11 @@
           <div class="navbar-nav nav-underline">
             <Link to="/csv-loader" getProps={getLinkProps}>Setup Tracker</Link>
             <Link to="/result" getProps={getLinkProps}>LTS Results</Link>
-            <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link>
-            <Link to="/" getProps={getLinkProps}>Keyword Search</Link>
-            <Link to="/search/random" getProps={getLinkProps}>Random Search</Link>
-            <Link to="/search/image" getProps={getLinkProps}>Image Search</Link>
+            <!-- <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link> -->
+            <!-- <Link to="/" getProps={getLinkProps}>Keyword Search</Link> -->
+            <Link to="/search/random" getProps={getLinkProps}>Labeling</Link>
+            <!-- <Link to="/search/image" getProps={getLinkProps}>Image Search</Link> -->
+            <Link to="/dashboard" getProps={getLinkProps}>Dashboard</Link>
             <Link to="/labels" getProps={getLinkProps}>Labels</Link>
             <!-- <Link to="/bootstrap" getProps={getLinkProps}>Bootstrap</Link> -->
           </div>
@@ -83,7 +87,9 @@
       <Route path="/search/seller" component={SearchText} />
       <Route path="/csv-loader" component={CSVLoader} /> <!-- Add the route for CSV Loader -->
       <Route path="/result" component={TrainingOutput} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/bootstrap" component={BootstrapComponents} />
     </div>
   </Router>
 </main>
+
