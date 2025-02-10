@@ -42,7 +42,7 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         print(f"Model improved")
         model_name = f"{id}/models/fine_tunned_{indx}_bandit_{chosen_bandit}"
         trainer.update_model(model_name, results[f"eval_{metric}"], save_model=True)
-        update_config(id, {"model_finetune": model_name, "budget": indx, "baseline": baseline})
+        update_config(id, {"model_finetune": model_name, "bugetValue": indx, "baseline": baseline})
         # save separated training data file
         name = f'{id}/{filename}_training_data'
         load_and_save_csv(name, training_data)

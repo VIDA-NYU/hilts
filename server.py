@@ -61,17 +61,10 @@ def test_message(message):
     socketio.start_background_task(target=train_model, message=message)
     socketio.emit('my response', {'message': 'Training started!'})
 
-# @socketio.on('connect')
-# def test_connect():
-#     emit('my response', {'data': 'Connected'})
-
 @socketio.on('stop_training')
 def test_disconnect(message):
     global stop_task
     stop_task = True
-    os.environ['CSV_PATH'] = f"{message['projectId']}/current_sample_training.csv"
-    global db
-    db = create_db_for_data_path(S3_Client)
     print('Client disconnected')
 
 
@@ -99,6 +92,13 @@ def images(path):
 def random_search():
     limit: int = request.args.get("limit", 12, type=int)
     hits = db.random_search(limit=limit)
+    return {"total": len(hits.index), "hits": hits.to_dict("records")}
+
+@app.route("/api/v1/random_hilts")
+def random_hilts_search():
+    projectId: str = request.args.get("projectId", "default", type=str)
+    limit: int = request.args.get("limit", 12, type=int)
+    hits = db.random_hilts_search(limit=limit, projectId=projectId)
     return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
 
@@ -186,8 +186,6 @@ def start_lts_generation():
         # Extract the prompt text
         args = data.get('argsDict')
         project_id = data.get('ProjectId')
-        print(project_id)
-
         if not args:
             return {'message': 'No prompt provided'}
         if not os.path.exists(project_id):
@@ -204,10 +202,14 @@ def train_model(message):
     import numpy as np
     label_hilts = message.get("labeling")
     project_id = message["projectId"]
+    result_path = f"{project_id}/results_logs.json"
     args, sampler, data, trainer, labeler = initialize_LTS(project_id)
     budget = args.get("budget")
     budget_value = int(args.get("bugetValue"))
-    training_results = []
+    if os.path.exists(result_path):
+        with open(result_path, "r") as json_file:
+            result_json = json.load(json_file)
+            socketio.emit('my response', result_json)
     if budget == "trainingSize":
         loops = int(budget_value/args.get("sample_size"))
         for idx in range(loops):
@@ -218,16 +220,30 @@ def train_model(message):
                 label = label_hilts
             else:
                 label = args.get("labeling")
-            result =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, project_id)
+            res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, project_id)
             result = {
-                "step": idx,
-                "precision": result["eval_precision"],
-                "recall": result["eval_recall"],
-                "f1_score": result["eval_f1"],
-                "accuracy": result["eval_accuracy"]
-            }
-            training_results.append(result)
+                    "step": [idx],
+                    "precision": [res["eval_precision"]],
+                    "recall": [res["eval_recall"]],
+                    "f1_score": [res["eval_f1"]],
+                    "accuracy": [res["eval_accuracy"]]
+                }
             socketio.emit('my response', result)
+
+            if not os.path.exists(result_path):
+                with open(result_path, "w") as json_file:
+                    json.dump(result, json_file, indent=4)
+            else:
+                with open(result_path, "r") as json_file:
+                    result_json = json.load(json_file)
+                result_json["precision"].append(result["eval_precision"])
+                result_json["recall"].append(result["eval_recall"])
+                result_json["f1_score"].append(result["eval_f1"])
+                result_json["accuracy"].append(result["eval_accuracy"])
+                result_json["step"].append(result["idx"])
+                with open(result_path, "w") as json_file:
+                    json.dump(result_json, json_file, indent=4)
+
             data = pd.read_csv(f"{project_id}/current_sample_training.csv")
             data["relevant"] = np.where(data["label"]==1, "animal origin", "not animal origin")
             global db
@@ -253,8 +269,7 @@ def train_model(message):
                 "f1_score": result["eval_f1"],
                 "accuracy": result["eval_accuracy"]
             }
-
-            training_results.append(result)
+            # training_results.append(result)
 
             # Emit the training result after each step
             socketio.emit('my response', result)
@@ -384,8 +399,8 @@ def create_database():
 
     # file.save(filepath)
     file.save(file_path)
-    global db
-    db = create_db_for_data_path(S3_Client)
+    # global db
+    # db = create_db_for_data_path(S3_Client)
 
     return {'message': 'CSV data received and processed successfully'}
 

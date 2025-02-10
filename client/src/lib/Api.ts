@@ -75,6 +75,17 @@ export async function random(limit: number): Promise<Hits> {
   return response;
 }
 
+export async function randomHILTS(limit: number, projectId: string): Promise<Hits> {
+  const response = await fetchJSON<Hits>("/random_hilts", {
+    limit: limit.toString(),
+    projectId: projectId,
+  }).catch((e) => {
+    console.error(e);
+    throw new Error("Failed to retrieve random search results.", { cause: e });
+  });
+  return response;
+}
+
 export async function labeled(): Promise<Hits> {
   const response = await fetchJSON<Hits>("/labeled", {}).catch((e) => {
     console.error(e);

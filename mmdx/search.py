@@ -90,6 +90,48 @@ class VectorDB:
     def get_label_counts(self) -> dict:
         return self.labelsdb.counts()
 
+    def random_hilts_search(self, limit: int, projectId: str) -> pd.DataFrame:
+        lance_tbl = self.tbl.to_lance()
+        csvpath =f"{projectId}/current_sample_training.csv"
+        if os.path.exists(csvpath):
+            df = pd.read_csv(csvpath)
+            image_paths = df["image_path"].to_list()
+            image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
+            print(image_path_list_str)
+            df_hits = duckdb.sql(
+                f"""WITH filtered_data AS (
+                    SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
+                    FROM lance_tbl
+                    LEFT OUTER JOIN (
+                        SELECT image_path,
+                            list(label) AS labels,
+                            list(type) AS types
+                        FROM (
+                            SELECT image_path, label, 'description' AS type FROM sqlite_scan('{self.labelsdb_path}', 'description')
+                            UNION ALL
+                            SELECT image_path, label, 'relevant' AS type FROM sqlite_scan('{self.labelsdb_path}', 'relevant')
+                            UNION ALL
+                            SELECT image_path, label, 'animal' AS type FROM sqlite_scan('{self.labelsdb_path}', 'animal')
+                            UNION ALL
+                            SELECT image_path, label, 'keywords' AS type FROM sqlite_scan('{self.labelsdb_path}', 'keywords')
+                        ) GROUP BY image_path
+                    ) AS grouped_labels
+                    ON (lance_tbl.image_path = grouped_labels.image_path)
+                    WHERE lance_tbl.image_path IN ({image_path_list_str}))
+                    SELECT * FROM filtered_data
+                    USING SAMPLE {limit} ROWS;
+                    """
+                    ).to_df()
+            df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
+            df_hits["title"] = df_hits["title"].fillna("")
+            df_hits["types"] = df_hits["types"].fillna("").apply(list)
+            print(df_hits)
+            df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
+            df_hits.drop(columns=["vector", "types"], inplace=True)
+            return df_hits
+        else:
+            return self.random_search(limit)
+
     def random_search(self, limit: int) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
         df_hits = duckdb.sql(

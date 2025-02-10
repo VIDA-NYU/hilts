@@ -29,6 +29,7 @@ class BertFineTuner:
             self.model = model
         else:
             self.model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
+        print(self.device)
         self.model.to(self.device)
 
 
@@ -123,6 +124,7 @@ class BertFineTuner:
             save_total_limit=2,
             save_steps=10,
             logging_steps=10,
+            no_cuda=True,
             push_to_hub=False,
             logging_dir="./logs",
             load_best_model_at_end=True

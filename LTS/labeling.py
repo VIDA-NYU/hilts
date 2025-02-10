@@ -41,7 +41,7 @@ class Labeling:
         #     self.model = Client(host='https://ollama-asr498.users.hsrn.nyu.edu/')
         #     print("Using OLLAMA client")
         if self.label_model=="llama":
-            self.model = OpenAI(api_key="x", base_url="https://api.deepinfra.com/v1/openai")
+            self.model = OpenAI(api_key="6kIT5imZojxpOTw5FoSyYL6luxbWW7PC", base_url="https://api.deepinfra.com/v1/openai")
         elif self.label_model == "gpt":
             self.model = OpenAI(api_key="")
         elif self.label_model =="mistral":
@@ -74,13 +74,6 @@ class Labeling:
     def generate_inference_data(self, data, column):
         def truncate_string(s, max_length=2000):  # Adjust max_length as needed
             return s[:max_length] + '...' if len(s) > max_length else s
-
-        # Define a function to create metadata JSON
-        # def get_metadata(row):
-        #     return {"url": row["url"], "price": 10, "currency": "USD", "seller": "Juliana Store"}
-
-
-
         if self.label_model != "file":
             examples = []
             for _, data_point in data.iterrows():

@@ -51,11 +51,15 @@ def update_config(project_id, new_info):
     config = read_config(config_file)
 
     ## continue from where it stops
-    budget = config.get("budget")
-    budget_used = new_info.get("budget")
-    if budget_used:
-        budget = budget - (budget_used)
+    budget_value = config.get("bugetValue")
+    sample_size = config.get("sample_size")
+    loops = int(budget_value/sample_size)
 
+    budget_used = new_info.get("bugetValue")
+    if budget_used:
+        loop_left = loops - (budget_used)
+
+    budget = loop_left * sample_size
 
     config["model_finetune"] = new_info.get("model_finetune", config.get("model_finetune"))
     config["budget"] = budget
