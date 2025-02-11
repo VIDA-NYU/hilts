@@ -14,6 +14,8 @@
     let chartData = [];
     let aggregatedData;
     let projectId = "default";
+    let productsCount = 20;
+    let speciesCount = 20;
 
     projectName.subscribe((name) => {
       projectId = name;
@@ -33,17 +35,35 @@
       aggregatedData = chartData.reduce((acc, { products, animalName }) => {
           // Ensure product type has an entry in the accumulator
           acc[products] = acc[products] || {};
-          acc[products][animalName] = (acc[products][animalName] || 0) + 1;
+          if (animalName) {//  # REMOVE NULL
+            acc[products][animalName] = (acc[products][animalName] || 0) + 1;
+          }
           return acc;
         }, {})
       console.log(aggregatedData)
-      //  # REMOVE NULL
 
       let disproportionateProductData = Object.entries(aggregatedData).map(([productType, speciesData]) => ({
           productType,
           species: Object.entries(speciesData)
             .map(([species, count]) => ({ species, count })) // Include all species
         }));
+
+      // Step 2: Sort product types by the total ad count across all species and select top `productsCount`
+      disproportionateProductData = disproportionateProductData
+        .map(d => ({
+          ...d,
+          totalAdCount: d.species.reduce((total, species) => total + species.count, 0) // Calculate total ad count for this product type
+        }))
+        .sort((a, b) => b.totalAdCount - a.totalAdCount) // Sort by total ad count in descending order
+        .slice(0, productsCount); // Take the top `productsCount` products
+
+      // Step 3: For each selected product type, select the top `speciesCount` species by ad count
+      disproportionateProductData = disproportionateProductData.map(d => ({
+        productType: d.productType,
+        species: d.species
+          .sort((a, b) => b.count - a.count) // Sort species by ad count in descending order
+          .slice(0, speciesCount) // Take top `speciesCount` species
+      }));
 
 
       const flatData = disproportionateProductData.flatMap(d =>
@@ -266,17 +286,26 @@
       <div class="col-4">
       <svg id="svg"></svg>
     </div>
-    </div>
-
-
+  </div>
     <!-- Dropdown and Button to choose the number of animals -->
-    <div class="w-full xl:w-4/12 px-4 mt-6">
-      <label for="animalCount" class="block text-gray-700 text-sm font-bold mb-2">
-        Select number of animals to display:
+   <div class="w-full xl:w-4/12 px-4 mt-6">
+      <label for="speciesCount" class="block text-gray-700 text-sm font-bold mb-2">
+        Select number of species to display:
       </label>
-
       <!-- Dropdown to select the number of animals -->
-      <select id="animalCount" class="form-select block w-full p-2 border border-gray-300 rounded-md">
+      <select id="speciesCount" class="form-select block w-25 p-2 border border-gray-300 rounded-md" bind:value={speciesCount}>
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+        <option value="25">25</option>
+      </select>
+
+      <label for="productsCount" class="block text-gray-700 text-sm font-bold mb-2">
+        Select number of product types to display:
+      </label>
+      <!-- Dropdown to select the number of animals -->
+      <select id="productsCount" class="form-select block w-25 p-2 border border-gray-300 rounded-md" bind:value={productsCount}>
         <option value="5">5</option>
         <option value="10">10</option>
         <option value="15">15</option>
@@ -294,5 +323,6 @@
     </div>
   </div>
 </div>
+
 
 
