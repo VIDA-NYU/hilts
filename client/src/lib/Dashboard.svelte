@@ -109,6 +109,8 @@
         .attr("width", visWidth + margin.left + margin.right)
         .attr("height", visHeight + margin.top + margin.bottom);
 
+      svg.selectAll("*").remove();
+
       const g = svg.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -266,9 +268,9 @@
     };
 
     // Initialize socket communication and call updateChartData on receiving data
-    onMount(() => {
-      getData()
-    })
+    // onMount(() => {
+    //   getData()
+    // })
 
     async function getData() {
       const response = await api.getProducts(projectId)
@@ -315,7 +317,7 @@
 
       <!-- Button to trigger getData function -->
       <button
-        onclick="getData()"
+        on:click={getData}
         class="btn btn-info"
       >
         Start Visualization
