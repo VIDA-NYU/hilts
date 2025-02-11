@@ -93,12 +93,6 @@ def random_search():
     hits = db.random_search(limit=limit)
     return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
-@app.route("/api/v1/random")
-def random_search():
-    limit: int = request.args.get("limit", 12, type=int)
-    hits = db.random_search(limit=limit)
-    return {"total": len(hits.index), "hits": hits.to_dict("records")}
-
 @app.route("/api/v1/random_hilts")
 def random_hilts_search():
     projectId: str = request.args.get("projectId", "default", type=str)
@@ -377,14 +371,15 @@ def train_model(message):
 #     # Emit a final message when training is complete
 #     socketio.emit('my response', {'message': 'Training complete!'})
 
-@app.route("/api/v1/get_products", methods=['GET'])
-def create_product_data() -> pd.DataFrame:
-    projectId = request.args.get("projectId")
-    df = pd.DataFrame(f"{projectId}/filename.csv")
+@app.route("/api/v1/get_products/<projectId>", methods=['GET'])
+def create_product_data(projectId) -> pd.DataFrame:
+    # projectId = request.args.get("projectId")
+    # projectId = "complete"
+    print(projectId)
+    df = pd.read_csv(f"{projectId}/filename.csv")
     df = df[["image_path", "products", "animal_name_match"]]
-    data = []
-    for _, row in df.iterrows():
-        data.append({"animalName": row["animal_name_match"], "products": row["products"]})
+    df.rename(columns={"animal_name_match": "animalName"}, inplace=True)
+    data = df.to_json(orient='records')
     return data
 
 

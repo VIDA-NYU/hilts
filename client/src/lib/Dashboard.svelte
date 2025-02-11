@@ -1,6 +1,6 @@
 <script>
     // core components
-    import {getProducts} from "./Api";
+    import * as api from "./Api";
     import LineChart from "./cards/LineChart.svelte";
     import BarChart from "./cards/BarChart.svelte";
     // import CardPageVisits from "cards/CardPageVisits.svelte";
@@ -23,53 +23,54 @@
     const visWidth = 800 - margin.left - margin.right;
     const visHeight = 600 - margin.top - margin.bottom;
 
-    const updateChartData = (msg) => {
-      if (msg && msg.products && msg.animalName) {
-        msg.productType.forEach(value => chartData.productType.push(value));
-        msg.species.forEach(value => chartData.species.push(value));
-      }
-    }
-
-    aggregatedData = chartData.reduce((acc, { products, animalName }) => {
-        // Ensure product type has an entry in the accumulator
-        acc[products] = acc[products] || {};
-        acc[products][animalName] = (acc[products][animalName] || 0) + 1;
-        return acc;
-      }, {})
-    console.log(aggregatedData)
-
-    let disproportionateProductData = Object.entries(aggregatedData).map(([productType, speciesData]) => ({
-        productType,
-        species: Object.entries(speciesData)
-          .map(([species, count]) => ({ species, count })) // Include all species
-      }));
-
-
-    const flatData = disproportionateProductData.flatMap(d =>
-      d.species.map(s => ({
-        productType: d.productType,
-        species: s.species,
-        count: s.count
-      }))
-    );
-
-    // Extract unique product types and species
-    const productTypes = [...new Set(flatData.map(d => d.productType))];
-    const species = [...new Set(flatData.map(d => d.species))];
-
-    // Create a complete dataset, filling in missing combinations with null counts
-    const completeData = productTypes.flatMap(productType =>
-      species.map(specie => {
-        const match = flatData.find(d => d.productType === productType && d.species === specie);
-        return {
-          productType,
-          species: specie,
-          count: match ? match.count : null // Null for missing data
-        };
-      })
-    );
-
+    // const updateChartData = (msg) => {
+    //   if (msg && msg.products && msg.animalName) {
+    //     msg.productType.forEach(value => chartData.productType.push(value));
+    //     msg.species.forEach(value => chartData.species.push(value));
+    //   }
+    // }
     const createChart = () => {
+      aggregatedData = chartData.reduce((acc, { products, animalName }) => {
+          // Ensure product type has an entry in the accumulator
+          acc[products] = acc[products] || {};
+          acc[products][animalName] = (acc[products][animalName] || 0) + 1;
+          return acc;
+        }, {})
+      console.log(aggregatedData)
+      //  # REMOVE NULL
+
+      let disproportionateProductData = Object.entries(aggregatedData).map(([productType, speciesData]) => ({
+          productType,
+          species: Object.entries(speciesData)
+            .map(([species, count]) => ({ species, count })) // Include all species
+        }));
+
+
+      const flatData = disproportionateProductData.flatMap(d =>
+        d.species.map(s => ({
+          productType: d.productType,
+          species: s.species,
+          count: s.count
+        }))
+      );
+
+      // Extract unique product types and species
+      const productTypes = [...new Set(flatData.map(d => d.productType))];
+      const species = [...new Set(flatData.map(d => d.species))];
+
+      // Create a complete dataset, filling in missing combinations with null counts
+      const completeData = productTypes.flatMap(productType =>
+        species.map(specie => {
+          const match = flatData.find(d => d.productType === productType && d.species === specie);
+          return {
+            productType,
+            species: specie,
+            count: match ? match.count : null // Null for missing data
+          };
+        })
+      );
+
+
       const x = d3.scaleBand()
         .domain(species)
         .range([0, visWidth])
@@ -246,25 +247,52 @@
 
     // Initialize socket communication and call updateChartData on receiving data
     onMount(() => {
-      chartData = getData()
-      createChart(); // Re-create the chart with updated data
+      getData()
     })
 
-    function getData() {
-      chartData = getProducts(projectId)
-      return chartData
+    async function getData() {
+      const response = await api.getProducts(projectId)
+      // console.log("response:")
+      // console.log(response)
+      chartData = response
+      createChart();
     };
 
   </script>
 
-  <div>
-    <div class="flex flex-wrap">
-      <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4">
-        <svg id="svg"></svg>
-      </div>
-      <!-- <div class="w-full xl:w-4/12 px-4">
-        <BarChart />
-      </div> -->
+<div>
+  <div class="container-fluid px-5">
+    <div class="row">
+      <div class="col-4">
+      <svg id="svg"></svg>
+    </div>
+    </div>
+
+
+    <!-- Dropdown and Button to choose the number of animals -->
+    <div class="w-full xl:w-4/12 px-4 mt-6">
+      <label for="animalCount" class="block text-gray-700 text-sm font-bold mb-2">
+        Select number of animals to display:
+      </label>
+
+      <!-- Dropdown to select the number of animals -->
+      <select id="animalCount" class="form-select block w-full p-2 border border-gray-300 rounded-md">
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+        <option value="25">25</option>
+      </select>
+
+      <!-- Button to trigger getData function -->
+      <button
+        onclick="getData()"
+        class="btn btn-info"
+      >
+        Start Visualization
+      </button>
+    </div>
   </div>
 </div>
+
 

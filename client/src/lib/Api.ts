@@ -158,18 +158,19 @@ export function downloadFile() {
 }
 
 export async function getProducts(projectId: string) {
-    const url = `${API_URL}/get_products?projectId=${encodeURIComponent(projectId)}`;
+    const url = `${API_URL}/get_products/${encodeURIComponent(projectId)}`;
     try {
       const response = await fetch(url, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+      }
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log(data)
       return data
     } catch (error) {
       console.error('Fetching error:', error);
