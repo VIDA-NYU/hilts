@@ -42,13 +42,14 @@
         }, {})
       console.log(aggregatedData)
 
+      // Step 1: Aggregate the data into disproportionateProductData
       let disproportionateProductData = Object.entries(aggregatedData).map(([productType, speciesData]) => ({
-          productType,
-          species: Object.entries(speciesData)
-            .map(([species, count]) => ({ species, count })) // Include all species
-        }));
+        productType,
+        species: Object.entries(speciesData)
+          .map(([species, count]) => ({ species, count })) // Include all species
+      }));
 
-      // Step 2: Sort product types by the total ad count across all species and select top `productsCount`
+      // Step 2: Calculate the total ad count for each product type and sort by total ad count
       disproportionateProductData = disproportionateProductData
         .map(d => ({
           ...d,
@@ -57,22 +58,35 @@
         .sort((a, b) => b.totalAdCount - a.totalAdCount) // Sort by total ad count in descending order
         .slice(0, productsCount); // Take the top `productsCount` products
 
-      // Step 3: For each selected product type, select the top `speciesCount` species by ad count
-      disproportionateProductData = disproportionateProductData.map(d => ({
-        productType: d.productType,
-        species: d.species
-          .sort((a, b) => b.count - a.count) // Sort species by ad count in descending order
-          .slice(0, speciesCount) // Take top `speciesCount` species
-      }));
-
-
-      const flatData = disproportionateProductData.flatMap(d =>
+      // Step 3: Flatten the species across all product types and sort by ad count
+      let allSpecies = disproportionateProductData.flatMap(d =>
         d.species.map(s => ({
           productType: d.productType,
           species: s.species,
           count: s.count
         }))
       );
+
+      // Step 4: Sort all species by their ad count in descending order
+      allSpecies = allSpecies.sort((a, b) => b.count - a.count);
+
+      // Step 5: Select the top `speciesCount` species from the sorted list
+      const topSpecies = allSpecies.slice(0, speciesCount);
+
+      // Step 6: For each product type, filter its species to only include the top `speciesCount` species
+      disproportionateProductData = disproportionateProductData.map(d => ({
+        productType: d.productType,
+        species: d.species.filter(s => topSpecies.some(ts => ts.species === s.species)) // Keep only top species
+      }));
+
+      // Step 7: Flatten the final data to get the structure we want
+      const flatData = disproportionateProductData.flatMap(d =>
+        d.species.map(s => ({
+          productType: d.productType,
+          species: s.species,
+          count: s.count
+        }))
+      );s
 
       // Extract unique product types and species
       const productTypes = [...new Set(flatData.map(d => d.productType))];
@@ -291,6 +305,16 @@
   </div>
     <!-- Dropdown and Button to choose the number of animals -->
    <div class="w-full xl:w-4/12 px-4 mt-6">
+      <label for="projectIdInput">Project Name</label>
+            <input
+              id="projectIdInput"
+              bind:value={projectId}
+              type="text"
+              class="form-control"
+              style="max-width:400px"
+              placeholder="Enter your project name"
+            />
+
       <label for="speciesCount" class="block text-gray-700 text-sm font-bold mb-2">
         Select number of species to display:
       </label>
