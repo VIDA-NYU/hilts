@@ -1,20 +1,23 @@
 <script>
     // core components
+    import {getProducts} from "./Api";
     import LineChart from "./cards/LineChart.svelte";
     import BarChart from "./cards/BarChart.svelte";
     // import CardPageVisits from "cards/CardPageVisits.svelte";
     // import CardSocialTraffic from ".cards/CardSocialTraffic.svelte";
-    export let location;
+    // export let location;
     import * as d3 from "d3";
     import { onMount } from "svelte";
-    import { io } from "socket.io-client";
+    import { projectName } from "./stores";
 
-    let chartData = new Map([
-      ['boots', ['caiman', 'crocodile']],
-      ['wallet', ['alligator']],
-      ['cosmetics', ['python']]
-    ]);
-    
+
+    let chartData = [];
+    let aggregatedData;
+    let projectId = "default";
+
+    projectName.subscribe((name) => {
+      projectId = name;
+    });
 
     const margin = { top: 100, right: 150, bottom: 150, left: 100 };
     const visWidth = 800 - margin.left - margin.right;
@@ -27,22 +30,20 @@
       }
     }
 
-    const disproportionateProductData = () => {
-      const aggregatedData = chartData.reduce((acc, { products, animalName }) => {
+    aggregatedData = chartData.reduce((acc, { products, animalName }) => {
         // Ensure product type has an entry in the accumulator
         acc[products] = acc[products] || {};
         acc[products][animalName] = (acc[products][animalName] || 0) + 1;
-
         return acc;
-      }, {});
+      }, {})
+    console.log(aggregatedData)
 
-      // Convert to array format without filtering by threshold
-      return Object.entries(aggregatedData).map(([productType, speciesData]) => ({
+    let disproportionateProductData = Object.entries(aggregatedData).map(([productType, speciesData]) => ({
         productType,
         species: Object.entries(speciesData)
           .map(([species, count]) => ({ species, count })) // Include all species
       }));
-    };
+
 
     const flatData = disproportionateProductData.flatMap(d =>
       d.species.map(s => ({
@@ -245,15 +246,15 @@
 
     // Initialize socket communication and call updateChartData on receiving data
     onMount(() => {
-      socket.on("my response", (msg) => {
-        console.log("Received: ", msg);
-        if (msg.hasOwnProperty("step") && msg.step !== null) {
-          updateChartData(msg); // Update chart data
-          steps_training.push(msg.step); // Add the step label to the steps_training array
-          createChart(); // Re-create the chart with updated data
-        }
-      });
-    });
+      chartData = getData()
+      createChart(); // Re-create the chart with updated data
+    })
+
+    function getData() {
+      chartData = getProducts(projectId)
+      return chartData
+    };
+
   </script>
 
   <div>
@@ -261,9 +262,9 @@
       <div class="w-full xl:w-8/12 mb-12 xl:mb-0 px-4">
         <svg id="svg"></svg>
       </div>
-      <div class="w-full xl:w-4/12 px-4">
+      <!-- <div class="w-full xl:w-4/12 px-4">
         <BarChart />
-      </div>
+      </div> -->
   </div>
 </div>
 

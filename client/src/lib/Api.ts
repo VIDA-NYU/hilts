@@ -157,21 +157,25 @@ export function downloadFile() {
   document.body.removeChild(link);
 }
 
-// export async function interference() {
-//     const url = `${API_URL}/training`;
-//     let responseMessage = "";
+export async function getProducts(projectId: string) {
+    const url = `${API_URL}/get_products?projectId=${encodeURIComponent(projectId)}`;
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
 
-//     try {
-//       const response = await fetch(url, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//       });
-//     } catch (error) {
-//         responseMessage = "Error loading Prompt";
-//         console.error("Error loading Prompt:", error);
-//     }
-//     return responseMessage
-// }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log(data)
+      return data
+    } catch (error) {
+      console.error('Fetching error:', error);
+    }
+
+  }
 
 
 export async function startLTSDataGeneration(

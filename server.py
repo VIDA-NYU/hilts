@@ -87,6 +87,11 @@ def images(path):
     else:
         return send_from_directory(DATA_PATH, path)
 
+@app.route("/api/v1/random")
+def random_search():
+    limit: int = request.args.get("limit", 12, type=int)
+    hits = db.random_search(limit=limit)
+    return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
 @app.route("/api/v1/random")
 def random_search():
@@ -371,6 +376,17 @@ def train_model(message):
 #         socketio.emit('my response', {'message': 'Training stopped by user'})
 #     # Emit a final message when training is complete
 #     socketio.emit('my response', {'message': 'Training complete!'})
+
+@app.route("/api/v1/get_products", methods=['GET'])
+def create_product_data() -> pd.DataFrame:
+    projectId = request.args.get("projectId")
+    df = pd.DataFrame(f"{projectId}/filename.csv")
+    df = df[["image_path", "products", "animal_name_match"]]
+    data = []
+    for _, row in df.iterrows():
+        data.append({"animalName": row["animal_name_match"], "products": row["products"]})
+    return data
+
 
 @app.route("/api/v1/load/csv_data", methods=['POST'])
 def create_database():

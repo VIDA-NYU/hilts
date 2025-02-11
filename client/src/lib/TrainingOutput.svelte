@@ -29,7 +29,7 @@
   let isTrainingComplete = false;
   let steps_training = [];
 
-  updateChartData = (msg) => {
+  const updateChartData = (msg) => {
   if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
     msg.precision.forEach(value => chartData.precision.push(value));
     msg.recall.forEach(value => chartData.recall.push(value));
