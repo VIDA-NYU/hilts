@@ -371,13 +371,10 @@ def train_model(message):
 #     # Emit a final message when training is complete
 #     socketio.emit('my response', {'message': 'Training complete!'})
 
-@app.route("/api/v1/get_products/<projectId>", methods=['GET'])
-def create_product_data(projectId) -> pd.DataFrame:
-    # projectId = request.args.get("projectId")
-    # projectId = "complete"
-    print(projectId)
+@app.route("/api/v1/get_data/<projectId>", methods=['GET'])
+def create_products_data(projectId) -> pd.DataFrame:
     df = pd.read_csv(f"{projectId}/filename.csv")
-    df = df[["image_path", "products", "animal_name_match"]]
+    df = df[["seller", "image_path", "products", "animal_name_match"]]
     df.rename(columns={"animal_name_match": "animalName"}, inplace=True)
     data = df.to_json(orient='records')
     return data

@@ -157,8 +157,8 @@ export function downloadFile() {
   document.body.removeChild(link);
 }
 
-export async function getProducts(projectId: string) {
-    const url = `${API_URL}/get_products/${encodeURIComponent(projectId)}`;
+export async function getData(projectId: string) {
+    const url = `${API_URL}/get_data/${encodeURIComponent(projectId)}`;
     try {
       const response = await fetch(url, {
         method: "GET",
