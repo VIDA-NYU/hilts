@@ -9,57 +9,75 @@
   // export let location;
   import * as d3 from "d3";
   import { onMount } from "svelte";
-  import { projectName } from "./stores";
   import { createChart } from "./cards/chart";
-  import { createImageVisualization } from "./cards/imagesChart";
+  import { createchartSeller } from "./cards/chartseller";
   import ImageCard from "./ImageCard.svelte";
 
   // import { createVisualization } from './cards/imagesChart'
 
+
+  import { projectName, dataGraph, products, species } from "./stores";
+
+
+
   let chartData = [];
   let projectId = "default";
-  let productsCount = 20;
-  let speciesCount = 20;
   let animals = [];
   let sellers = {};
   let sortedSellers = [];
   let imagePaths = [];
   let hits: Hit[]
+  let graphData = $dataGraph;  // Reactive store value
+  let productsCount = $products || 5;
+  let speciesCount = $species|| 5;
 
-
+  onMount(() => {
+    // Initial chart creation when the component mounts
+    if (graphData && productsCount && speciesCount) {
+      createChart(graphData, productsCount, speciesCount, HandleClick);
+    }
+  });
 
   projectName.subscribe((name) => {
     projectId = name;
   });
 
-  function HandleClick(data) {
+  function HandleClick(data, matchingData) {
     imagePaths = [];
     data.slice(0, 4).forEach((item) => {
       imagePaths.push(item.split("/").pop());
     });
-    // createImageVisualization(imagePaths);
-    // Now `imagePaths` contains the last part of the path for each image
-    console.log(imagePaths); // You can log it to check the result
 
-    hits = imagePaths.map((image_path) => ({
-      _distance: 0,  // You can modify this based on your requirement
+    if (imagePaths.length > 0 ) {
+      hits = imagePaths.map((image_path) => ({
+      _distance: 0,
       image_path: image_path,
-      title: "",  // You can set a title if needed, or leave it empty
-      metadata: "",  // Set metadata as an empty string
-      labels_types_dict: {}  // Empty dictionary for labels (modify if needed)
-    }));
+      title: "",
+      metadata: "",
+      labels_types_dict: {}
+    }))
+
+    countSellers(matchingData)
+    createchartSeller(sortedSellers)
+    };
+
   }
+
 
   async function getData() {
     const response = await api.getData(projectId);
     // console.log("response:")
     // console.log(response)
     chartData = response;
-    countSellers(chartData);
+    // countSellers(chartData);
     createChart(chartData, productsCount, speciesCount, HandleClick);
+    dataGraph.set(chartData);
+    products.set(productsCount);
+    species.set(speciesCount);
   }
 
   function countSellers(data) {
+    console.log(data)
     data.forEach((item) => {
       if (item.seller) {
         sellers[item.seller] = (sellers[item.seller] || 0) + 1;
@@ -74,14 +92,14 @@
 <div>
   <div class="container-fluid px-5">
     <div class="row">
-      <div class="col-8">
+      <div class="col-4">
         <svg id="svg"></svg>
+      </div>
+      <div class="col-4">
+        <svg id="chart2"></svg>
       </div>
       <div>
       </div>
-      <!-- <div class="col-4">
-        <div id="image-grid"></div>
-      </div> -->
       {#if hits && hits.length > 0}
         <div class="d-flex flex-wrap mt-2 mb-2">
           {#each hits as hit}
@@ -165,14 +183,3 @@
   </div>
 </div>
 
-<style>
-  .form-select.seller-dropdown {
-    /* max-height: 15px; Adjust the height to control how many items can fit before scrolling */
-    overflow-y: auto; /* Enable vertical scrolling */
-  }
-  .container-fluid {
-    padding: 20px;
-    max-height: 100vh; /* Ensure the content doesn't overflow the viewport */
-    overflow-y: auto; /* Allow vertical scrolling for the content */
-  }
-</style>

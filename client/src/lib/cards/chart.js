@@ -159,7 +159,9 @@ export function createChart(chartData, productsCount, speciesCount, HandleClick)
 
         const matchingImages = chartData.filter(item => item.products === productType && item.animalName === species)
                                        .map(item => item.image_path);
-        HandleClick(matchingImages);
+        const matchingData = chartData.filter(item => item.products === productType && item.animalName === species);
+                                    //    .map(item => item.image_path);
+        HandleClick(matchingImages, matchingData);
     });
 
     // Add text labels to the cells with data
@@ -260,6 +262,6 @@ export function createChart(chartData, productsCount, speciesCount, HandleClick)
     .attr("text-anchor", "middle")
     .attr("font-size", "16px")
     .attr("font-weight", "bold")
-    .text("Disproportionately Sold Products and Associated Animal Species");
+    .text("Sold Products types and Associated Animal Species");
 
     };

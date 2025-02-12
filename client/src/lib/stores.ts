@@ -13,3 +13,7 @@ export const modal = writable(null);
 export const windowStyle = writable({});
 // Create a writable store to hold the projectId
 export const projectName = writable("");
+export const dataGraph = writable({});
+export const products = writable([]);
+export const species = writable([]);
+
