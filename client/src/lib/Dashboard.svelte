@@ -1,35 +1,25 @@
 <script lang="ts">
   import * as api from "./Api";
   import type { Hit } from "./Api";
-
-  // import LineChart from "./cards/LineChart.svelte";
-  // import BarChart from "./cards/BarChart.svelte";
-  // import CardPageVisits from "cards/CardPageVisits.svelte";
-  // import CardSocialTraffic from ".cards/CardSocialTraffic.svelte";
-  // export let location;
-  import * as d3 from "d3";
-  import { onMount } from "svelte";
-  import { createChart } from "./cards/chart";
-  import { createchartSeller } from "./cards/chartseller";
+  import { onMount, afterUpdate } from "svelte";
+  import { createChart, updateChartSize } from "./cards/heatMap";
+  import { createchartSeller } from "./cards/barChart";
   import ImageCard from "./ImageCard.svelte";
 
   // import { createVisualization } from './cards/imagesChart'
 
-
   import { projectName, dataGraph, products, species } from "./stores";
 
-
-
   let chartData = [];
-  let projectId = "default";
+  let projectId = "complete";
   let animals = [];
   let sellers = {};
   let sortedSellers = [];
   let imagePaths = [];
-  let hits: Hit[]
-  let graphData = $dataGraph;  // Reactive store value
-  let productsCount = $products || 5;
-  let speciesCount = $species|| 5;
+  let hits: Hit[];
+  let graphData = $dataGraph; // Reactive store value
+  let productsCount = 5; //$products || 5;
+  let speciesCount = 5; //$species|| 5;
 
   onMount(() => {
     // Initial chart creation when the component mounts
@@ -48,28 +38,24 @@
       imagePaths.push(item.split("/").pop());
     });
 
-    if (imagePaths.length > 0 ) {
+    if (imagePaths.length > 0) {
       hits = imagePaths.map((image_path) => ({
-      _distance: 0,
-      image_path: image_path,
-      title: "",
-      metadata: "",
-      labels_types_dict: {}
-    }))
+        _distance: 0,
+        image_path: image_path,
+        title: "",
+        metadata: "",
+        labels_types_dict: {},
+      }));
 
-    countSellers(matchingData)
-    createchartSeller(sortedSellers)
-    };
-
+      countSellers(matchingData);
+      createchartSeller(sortedSellers);
+    }
   }
 
-
   async function getData() {
-    const response = await api.getData(projectId);
-    // console.log("response:")
-    // console.log(response)
+    const response = await api.getData("complete");
     chartData = response;
-    // countSellers(chartData);
+
     createChart(chartData, productsCount, speciesCount, HandleClick);
     dataGraph.set(chartData);
     products.set(productsCount);
@@ -77,7 +63,7 @@
   }
 
   function countSellers(data) {
-    console.log(data)
+    console.log(data);
     data.forEach((item) => {
       if (item.seller) {
         sellers[item.seller] = (sellers[item.seller] || 0) + 1;
@@ -89,17 +75,94 @@
   }
 </script>
 
-<div>
-  <div class="container-fluid px-5">
+<div class="container-fluid">
+  <!-- First Column (smaller) -->
+  <div class="col-2">
+    <div class="card m-2">
+      <div class="card-header bg-primary text-white">Filters</div>
+      <div class="card-body">
+        <div class="w-full xl:w-4/12 mt-6">
+          <label for="projectIdInput">Project Name</label>
+          <input
+            id="projectIdInput"
+            bind:value={projectId}
+            type="text"
+            class="form-control"
+            style="max-width:400px"
+            placeholder="Enter your project name"
+          />
+        </div>
+      </div>
+      <div class="card-body">
+        <label for="select1">Select number of species</label>
+        <select
+          id="speciesCount"
+          class="form-select block p-2 border border-gray-300 rounded-md"
+          bind:value={speciesCount}
+        >
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+        </select>
+      </div>
+
+      <div class="card-body">
+        <label for="select2">Select number of product types</label>
+        <select
+          id="select2"
+          class="form-select block p-2 border border-gray-300 rounded-md"
+          bind:value={productsCount}
+        >
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+        </select>
+      </div>
+
+      <div class="card-body">
+        <label for="select3">Select Option 3</label>
+        <select
+          id="select3"
+          class="form-select block p-2 border border-gray-300 rounded-md"
+        >
+          <option value="option1">Option 1</option>
+          <option value="option2">Option 2</option>
+          <option value="option3">Option 3</option>
+        </select>
+      </div>
+
+      <div class="card-body">
+        <button on:click={getData} class="btn btn-info mb-2 mt-2">
+          Start Visualization
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Second Column (grey background for visualizations) -->
+  <!-- <div class ="container" > -->
+
+  <!-- <div style="width: 100%; height: 100%; background-color: red; display: flex; flex-direction: column;">
+        <div style=" flex: 3; background-color: blue;"></div>
+        <div style="flex: 1; background-color: green;"></div>
+
+        <h1>test</h1>
+      </div> -->
+  <div class="col-10">
     <div class="row">
-      <div class="col-4">
-        <svg id="svg"></svg>
+      <div class="col-6">
+        <div id="heatmap" class="svg-container"></div>
       </div>
-      <div class="col-4">
-        <svg id="chart2"></svg>
+      <div class="col-6">
+        <!-- <h3>Visualization Area 2</h3> -->
+        <div id="barchart" class="svg-container"></div>
       </div>
-      <div>
-      </div>
+    </div>
+    <div class="row">
       {#if hits && hits.length > 0}
         <div class="d-flex flex-wrap mt-2 mb-2">
           {#each hits as hit}
@@ -109,77 +172,49 @@
           {/each}
         </div>
       {/if}
-
-    </div>
-    <!-- Dropdown and Button to choose the number of animals -->
-      <div class="col-4">
-    <div class="w-full xl:w-4/12 mt-6">
-      <label for="projectIdInput">Project Name</label>
-      <input
-        id="projectIdInput"
-        bind:value={projectId}
-        type="text"
-        class="form-control"
-        style="max-width:400px"
-        placeholder="Enter your project name"
-      />
-
-      <label
-        for="speciesCount"
-        class="block text-gray-700 text-sm font-bold mb-2"
-      >
-        Select number of species to display:
-      </label>
-      <!-- Dropdown to select the number of animals -->
-      <select
-        id="speciesCount"
-        class="form-select block w-25 p-2 border border-gray-300 rounded-md"
-        bind:value={speciesCount}
-      >
-        <option value="5">5</option>
-        <option value="10">10</option>
-        <option value="15">15</option>
-        <option value="20">20</option>
-        <option value="25">25</option>
-      </select>
-
-      <label
-        for="productsCount"
-        class="block text-gray-700 text-sm font-bold mb-2"
-      >
-        Select number of product types to display:
-      </label>
-      <!-- Dropdown to select the number of animals -->
-      <select
-        id="productsCount"
-        class="form-select block w-25 p-2 border border-gray-300 rounded-md"
-        bind:value={productsCount}
-      >
-        <option value="5">5</option>
-        <option value="10">10</option>
-        <option value="15">15</option>
-        <option value="20">20</option>
-        <option value="25">25</option>
-      </select>
-
-      <!-- Button to trigger getData function -->
-      <button on:click={getData} class="btn btn-info mb-2 mt-2">
-        Start Visualization
-      </button>
-      <!-- dropdown select seller to display products -->
-      <!-- <label for="seller" class="form-select block w-25 p-2 border border-gray-300 rounded-md">
-        Select a Seller:
-      </label> -->
-      <!-- <select id="seller" class="form-select seller-dropdown block w-25 p-2 border border-gray-300 rounded-md" bind:value={sellerSelected}>
-        <option value="">Select a seller</option>
-        {#each sortedSellers as { seller, count }}
-          <option value={seller}>
-            {seller} ({count})
-          </option>
-        {/each}
-      </select> -->
-    </div>
+      <!-- <div class="col-5 m-2 bg-primary">
+    <h3>Visualization Area 3</h3>
+    <svg id="svg2"></svg>
+  </div>
+  <div class="col-5 m-2 bg-primary">
+    <h3>Visualization Area 4</h3>
+    <svg id="svg2"></svg>
+  </div> -->
     </div>
   </div>
 </div>
+<!-- </div> -->
 
+<style>
+  .container-fluid {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+  :host {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+  select {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .svg-container {
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    /* height: 100%; */
+    padding-bottom: 100%;
+    vertical-align: top;
+    overflow: hidden;
+  }
+  .svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    left: 0;
+  }
+</style>
