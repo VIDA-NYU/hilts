@@ -21,6 +21,9 @@
   let productsCount = 5; //$products || 5;
   let speciesCount = 5; //$species|| 5;
 
+  let minValue = 0;
+  let maxValue = 1000000;
+
   onMount(() => {
     // Initial chart creation when the component mounts
     if (graphData && productsCount && speciesCount) {
@@ -82,7 +85,7 @@
       <div class="card-header bg-primary text-white">Filters</div>
       <div class="card-body">
         <div class="w-full xl:w-4/12 mt-6">
-          <label for="projectIdInput">Project Name</label>
+          <label for="projectIdInput"><b>Project Name</b></label>
           <input
             id="projectIdInput"
             bind:value={projectId}
@@ -94,7 +97,7 @@
         </div>
       </div>
       <div class="card-body">
-        <label for="select1">Select number of species</label>
+        <label for="select1"><b>Select number of species</b></label>
         <select
           id="speciesCount"
           class="form-select block p-2 border border-gray-300 rounded-md"
@@ -109,7 +112,7 @@
       </div>
 
       <div class="card-body">
-        <label for="select2">Select number of product types</label>
+        <label for="select2"><b>Select number of product types</b></label>
         <select
           id="select2"
           class="form-select block p-2 border border-gray-300 rounded-md"
@@ -124,15 +127,34 @@
       </div>
 
       <div class="card-body">
-        <label for="select3">Select Option 3</label>
-        <select
-          id="select3"
-          class="form-select block p-2 border border-gray-300 rounded-md"
-        >
-          <option value="option1">Option 1</option>
-          <option value="option2">Option 2</option>
-          <option value="option3">Option 3</option>
-        </select>
+        <b>Select Price Range</b>
+        <!-- Min Value Slider -->
+        <!-- <label for="min-range" class="block mb-2">Set Minimum Value</label> -->
+        <input
+          id="min-range"
+          type="range"
+          min="0"
+          max="1000000"
+          step="1"
+          bind:value={minValue}
+          on:input={updateMinValue}
+          class="form-range block border border-gray-300 rounded-md"
+        />
+        <div class="mt-2 text-sm text-gray-600">Min: {minValue}</div>
+
+        <!-- Max Value Slider -->
+        <!-- <label for="max-range" class="block">Set Maximum Value</label> -->
+        <input
+          id="max-range"
+          type="range"
+          min="0"
+          max="1000000"
+          step="1"
+          bind:value={maxValue}
+          on:input={updateMaxValue}
+          class="form-range block border border-gray-300 rounded-md"
+        />
+        <div class="mt-2 text-sm text-gray-600">Max: {maxValue}</div>
       </div>
 
       <div class="card-body">
@@ -216,5 +238,11 @@
     position: absolute;
     top: 10px;
     left: 0;
+  }
+  .form-range {
+    width: 100%;
+    height: 10px;
+    background: #ddd;
+    border-radius: 5px;
   }
 </style>

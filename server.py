@@ -35,6 +35,7 @@ stop_task = False
 @app.route("/")
 @app.route("/search/random")
 @app.route("/search/image")
+@app.route("/search/seller")
 @app.route("/labels")
 @app.route("/bootstrap")
 def base():

@@ -149,24 +149,36 @@
     </div>
     <div class="card-body">
       <p class="card-text mb-2">
-        {hit.title ? hit.title : hit.image_path}
+        <a href="{parsedHitMetadata['url']}" target="_blank">
+          {hit.title ? hit.title : hit.image_path}<br />
+        </a>
+        <strong><b>{"Price"}: </b></strong>  {parsedHitMetadata["price"] ? parsedHitMetadata["price"] : "NA" }  {parsedHitMetadata["currency"] ? parsedHitMetadata["currency"] : "NA" }<br />
+        <strong><b>{"Seller"}: </b></strong> {parsedHitMetadata["seller"] ? parsedHitMetadata["seller"] : "NA" }<br />
+        <!-- {#each Object.keys(parsedHitMetadata) as key}
+      <li>
+        {#if key != "url"}
+        <strong>{key}:</strong> {parsedHitMetadata[key]}
+        {/if}
+      </li> -->
+    <!-- {/each} -->
       </p>
-      <div class="btn-toolbar mt-1">
-        <div class="btn-group me-2" role="group" aria-label="">
+      <div class="btn-toolbar">
+        <!-- <div class="btn-group" role="group" aria-label=""> -->
           <button
-            class="btn btn-sm btn-success"
+            class="btn btn-success"
             on:click={() => addLabelExclusive("animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-up" aria-hidden="true" />
           </button>
           <button
-            class="btn btn-sm btn-warning"
+            class="btn btn-warning"
             on:click={() => addLabelExclusive("not animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-down" aria-hidden="true" />
           </button>
+        <!-- </div> -->
         </div>
-        <div class="btn-group me-2 mt-1" role="group" aria-label="">
+        <div class="btn-group-vertical" role="group" aria-label="">
           <AutoComplete
             debug={false}
             inputClassName="form-control"
@@ -176,9 +188,8 @@
             onChange={(label) => addLabelExclusive(label, "animal")}
             placeholder="Animal"
           />
-        </div>
-        <div class="box-container">
-          <div class="btn-group me-2" role="group" aria-label="">
+
+          <!-- <div class="btn-group me-2" role="group" aria-label=""> -->
             <AutoComplete
               debug={false}
               inputClassName="form-control"
@@ -189,10 +200,10 @@
               onChange={(label) => addLabelInclusive(label, "description")}
               placeholder="Description"
             />
-          </div>
         </div>
-        <div class="box-container">
-          <div class="btn-group me-2" role="group" aria-label="">
+        <!-- </div> -->
+        <!-- <div class="box-container"> -->
+          <!-- <div class="btn-group me-2" role="group" aria-label="">
             <AutoComplete
               debug={false}
               inputClassName="form-control"
@@ -203,8 +214,8 @@
               onCreate={handleCreateKeyword}
               placeholder="Negative Keyword"
             />
-          </div>
-        </div>
+          </div> -->
+        <!-- </div> -->
         {#if hitLabels && Object.keys(hitLabels).length > 0}
           <div class="btn-toolbar mb-1">
             {#each Object.entries(hitLabels) as [label, value], idx}
@@ -229,10 +240,10 @@
           <div class="btn-group">
             <button
               class="btn btn-sm btn-info me-1"
-              on:click={() => (showModal = true)}
+              on:click={() => navigate("/search/seller?q=" + parsedHitMetadata["seller"])}
             >
-              <i class="fa fa-info-circle me-1" aria-hidden="true" />
-              Metadata
+              <i class="fa fa-search me-1" aria-hidden="true" />
+              Search Seller
             </button>
             <button
               class="btn btn-sm btn-info"
@@ -241,7 +252,7 @@
               <i class="fa fa-search me-1" aria-hidden="true" />
               Find Similar
             </button>
-          </div>
+          <!-- </div> -->
         </div>
       </div>
     </div>

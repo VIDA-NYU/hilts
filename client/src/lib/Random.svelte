@@ -18,7 +18,7 @@
     projectId = name;
   });
 
-  function onQuerySubmit() {
+  function searchRandom() {
     result = randomHILTS(+limit, projectId);
     result.then( (hits: Hits) => {
       if (result) {
@@ -29,6 +29,18 @@
       }
     });
   }
+
+  function onQuerySubmit() {
+      searchRandom()
+    };
+
+    export let location: Location;
+    $: {
+      console.log(location);
+      // this block is reactively triggered whenever the location variable (which contains the URL) changes
+      searchRandom();
+    }
+
 
   function onLabelAllEvent() {
     console.log("onChangeLabels");

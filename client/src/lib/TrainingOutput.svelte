@@ -1,9 +1,11 @@
-<script>
+<script lang="ts">
   import * as api from "./Api"; // Assuming the API logic is in this file
   import { onMount } from "svelte";
   import { io } from "socket.io-client";
   import * as d3 from "d3";
   import { projectName } from "./stores"
+  import { navigate } from "svelte-routing";
+
 
   let chartData = {
     precision: [],
@@ -166,26 +168,33 @@
     socket.emit("stop_training", { projectId: projectId, labeling: ""});
   }
 
-  async function startTraining() {
+  async function startTraining(){
     socket.emit("start training", { projectId: projectId , labeling: ""});
   }
 
   async function restartTraining() {
     socket.emit("start retrain", { projectId: projectId , labeling: "file"});
   }
+
+  export let location: Location;
+    $: {
+      // console.log(location);
+      // this block is reactively triggered whenever the location variable (which contains the URL) changes
+      startTraining();
+    }
 </script>
 
 <div class="container-fluid px-5">
   <h1>LTS</h1>
   <h3>Current Project ID: {projectId}</h3>
   <!-- Button to start training -->
-  <button
+  <!-- <button
     class="btn btn-success"
     on:click={startTraining}
     disabled={isTrainingComplete}
   >
     Start Training
-  </button>
+  </button> -->
   <svg id="chart"></svg>
 
   <!-- {#if isTrainingComplete}
@@ -194,7 +203,7 @@
   <!-- Button to check interference (or any API-related logic) -->
   <button
     class="btn danger"
-    on:click={interference}
+    on:click={() => { interference; navigate("/search/random?q="); }}
     disabled={isTrainingComplete}
   >
     Stop and Fix Labels

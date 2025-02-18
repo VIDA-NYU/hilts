@@ -77,16 +77,16 @@
 
     <div>
       <Route path="/" component={Search} />
-      <Route path="/search/random" component={Random} />
+      <Route path="/search/random" component={Random} location={window.location}/>
       <Route
         path="/search/image"
         component={ImageSearch}
         location={window.location}
       />
       <Route path="/labels" component={LabeledData} />
-      <Route path="/search/seller" component={SearchText} />
+      <Route path="/search/seller" component={SearchText} location={window.location} />
       <Route path="/csv-loader" component={CSVLoader} /> <!-- Add the route for CSV Loader -->
-      <Route path="/result" component={TrainingOutput} />
+      <Route path="/result" component={TrainingOutput} location={window.location} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/bootstrap" component={BootstrapComponents} />
     </div>

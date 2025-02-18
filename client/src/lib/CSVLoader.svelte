@@ -3,6 +3,8 @@
   import Modal from "./Modal.svelte";
   import { projectName } from "./stores";
   export let dataToCSV = [];
+  import { navigate } from "svelte-routing";
+
 
   export let allowedFileExtensions = ["csv"];
 
@@ -192,9 +194,10 @@
         Update Settings
       </button>
       <div class="pt-2">
-        <button class="btn btn-success" on:click={startLTSGenerator}>
+        <button class="btn btn-success" on:click={() => navigate("/result?q=")}>
+          <!-- startLTSGenerator -->
           <span class="fa fa-cogs mr-2" />
-          Save Project
+          Start Project
         </button>
       </div>
 
