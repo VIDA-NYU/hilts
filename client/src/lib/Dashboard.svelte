@@ -11,7 +11,7 @@
   import { projectName, dataGraph, products, species } from "./stores";
 
   let chartData = [];
-  let projectId = "complete";
+  let projectId = "";
   let animals = [];
   let sellers = {};
   let sortedSellers = [];
@@ -56,7 +56,7 @@
   }
 
   async function getData() {
-    const response = await api.getData("complete");
+    const response = await api.getData(projectId);
     chartData = response;
 
     createChart(chartData, productsCount, speciesCount, HandleClick);
@@ -137,7 +137,6 @@
           max="1000000"
           step="1"
           bind:value={minValue}
-          on:input={updateMinValue}
           class="form-range block border border-gray-300 rounded-md"
         />
         <div class="mt-2 text-sm text-gray-600">Min: {minValue}</div>
@@ -151,7 +150,6 @@
           max="1000000"
           step="1"
           bind:value={maxValue}
-          on:input={updateMaxValue}
           class="form-range block border border-gray-300 rounded-md"
         />
         <div class="mt-2 text-sm text-gray-600">Max: {maxValue}</div>
@@ -174,15 +172,20 @@
 
         <h1>test</h1>
       </div> -->
-  <div class="col-10">
+  <div class="col-8">
     <div class="row">
-      <div class="col-6">
+      <div class="col-5">
+        <div class="card m-2">
         <div id="heatmap" class="svg-container"></div>
       </div>
-      <div class="col-6">
+
+    </div>
+      <div class="col-5">
+        <div class="card m-2">
         <!-- <h3>Visualization Area 2</h3> -->
         <div id="barchart" class="svg-container"></div>
       </div>
+    </div>
     </div>
     <div class="row">
       {#if hits && hits.length > 0}
@@ -194,18 +197,9 @@
           {/each}
         </div>
       {/if}
-      <!-- <div class="col-5 m-2 bg-primary">
-    <h3>Visualization Area 3</h3>
-    <svg id="svg2"></svg>
-  </div>
-  <div class="col-5 m-2 bg-primary">
-    <h3>Visualization Area 4</h3>
-    <svg id="svg2"></svg>
-  </div> -->
     </div>
   </div>
 </div>
-<!-- </div> -->
 
 <style>
   .container-fluid {
