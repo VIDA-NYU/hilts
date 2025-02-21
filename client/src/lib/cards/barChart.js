@@ -12,7 +12,7 @@ export function createchartSeller(sortedSellers) {
   const svg = d3.select("div#barchart")
     .append("svg")
     .attr("preserveAspectRatio", "xMinYMin meet")
-    .attr("viewBox", "0 0 1100 900")
+    .attr("viewBox", "-150 -150 1500 1000")
     .classed("svg-content-responsive", true);
 
   const svgNode = svg.node();
