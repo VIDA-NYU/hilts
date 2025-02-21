@@ -4,6 +4,7 @@
   import { onMount, afterUpdate } from "svelte";
   import { createChart, updateChartSize } from "./cards/heatMap";
   import { createchartSeller } from "./cards/barChart";
+  import { createMap } from "./cards/map";
   import ImageCard from "./ImageCard.svelte";
 
   // import { createVisualization } from './cards/imagesChart'
@@ -20,6 +21,8 @@
   let graphData = $dataGraph; // Reactive store value
   let productsCount = 5; //$products || 5;
   let speciesCount = 5; //$species|| 5;
+  let sellerCount = 18;
+  let sellerSelect = "Top Sellers"
 
   let minValue = 0;
   let maxValue = 1000000;
@@ -117,6 +120,21 @@
           id="select2"
           class="form-select block p-2 border border-gray-300 rounded-md"
           bind:value={productsCount}
+        >
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+        </select>
+      </div>
+
+      <div class="card-body">
+        <label for="select2"><b>Select number of top sellers</b></label>
+        <select
+          id="select2"
+          class="form-select block p-2 border border-gray-300 rounded-md"
+          bind:value={sellerCount}
         >
           <option value="5">5</option>
           <option value="10">10</option>
