@@ -59,7 +59,9 @@ COPY --chown=mmdx --from=builder /app/.venv /app/.venv
 COPY --chown=mmdx --from=client-builder /app/client/dist/ /app/client/dist/
 COPY --chown=mmdx client/public/ /app/client/public/
 COPY --chown=mmdx LTS /app/LTS
-COPY --chown=mmdx dockerdata /app/dockerdata
+COPY --chown=mmdx docker-entrypoint /app/
+# RUN chmod +x /app/entrypoint.sh
+
 
 # Activate venv
 ENV VIRTUAL_ENV=/app/.venv
@@ -79,4 +81,7 @@ ENV GUNICORN_CMD_ARGS="--workers=1 --threads=1 --worker-class=gthread --log-file
 
 # Run the application:
 COPY server.py .
+COPY create_db.py .
+# COPY entrypoint.sh .
+# RUN chmod +x /app/entrypoint.sh
 CMD ["gunicorn", "--timeout", "600", "server:app"]
