@@ -285,7 +285,7 @@
           <option value="recall">Precision</option>
         </select>
       </div>
-      <!-- <div class="col-6">
+      <div class="col-6">
         <label for="baseline">Baseline Metric Value</label>
         <input
           id="baseline"
@@ -293,7 +293,7 @@
           class="form-control"
           bind:value={baseline}
         />
-      </div> -->
+      </div>
       <div class="col-6">
         <label for="validation_size">Validation Data Size</label>
         <input
