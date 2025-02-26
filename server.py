@@ -26,16 +26,18 @@ from LTS.main import initialize_LTS
 from LTS.lts_processing import LTS
 
 app = Flask(__name__)
-# CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app) #cors_allowed_origins="*"
+
 
 stop_task = False
 # Path for our main Svelte app. All routes in the app must be added
 # here to allow refreshing to work correctly.
 @app.route("/")
+@app.route("/csv-loader")
+@app.route("/search/seller")
 @app.route("/search/random")
 @app.route("/search/image")
-@app.route("/search/seller")
+@app.route("/dashboard")
 @app.route("/labels")
 @app.route("/bootstrap")
 def base():
@@ -47,6 +49,7 @@ def test_message(message):
 
 @socketio.on('start training')
 def test_message(message):
+    print("start")
     global stop_task
     stop_task = False
     socketio.start_background_task(target=train_model, message=message)

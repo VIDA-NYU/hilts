@@ -12,7 +12,7 @@ export function createchartSeller(sortedSellers) {
   const svg = d3.select("div#barchart")
     .append("svg")
     .attr("preserveAspectRatio", "xMinYMin meet")
-    .attr("viewBox", "0 0 1100 900")
+    .attr("viewBox", "-150 -150 1500 1000")
     .classed("svg-content-responsive", true);
 
   const svgNode = svg.node();
@@ -47,23 +47,23 @@ export function createchartSeller(sortedSellers) {
     .attr("class", "x-axis")
     .attr("transform", "translate(0," + height + ")")
     .call(d3.axisBottom(x))
-    // .tickSize([0,0])
     .selectAll("text")
     .style("text-anchor", "end")
-    .style("font-size", "16px")
+    .style("font-size", "26px")
     .attr("transform", "rotate(-65)")
 
   // Add y-axis
   svg.append("g")
     .attr("class", "y-axis")
-    .call(d3.axisLeft(y));
+    .call(d3.axisLeft(y))
+    .attr("font-size", "20px");
 
   // Add axis labels
-  svg.append("text")
-    .attr("x", width / 2)
-    .attr("y", height + margin.bottom - 10)
-    .style("text-anchor", "middle")
-    .text("Sellers");
+  // svg.append("text")
+  //   .attr("x", width / 2)
+  //   .attr("y", height + margin.bottom + 5)
+  //   .style("text-anchor", "middle")
+  //   .text("Sellers");
 
   // svg.append("text")
   //   .attr("transform", "rotate(-90)")
@@ -76,7 +76,7 @@ export function createchartSeller(sortedSellers) {
     .attr("x", (width + margin.left - margin.right) / 2)
     .attr("y", (margin.top - margin.bottom))
     .attr("text-anchor", "middle")
-    .attr("font-size", "16px")
+    .attr("font-size", "35px")
     .attr("font-weight", "bold")
     .text("Sellers of selected product and Animal");
 }

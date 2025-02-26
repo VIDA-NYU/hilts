@@ -96,8 +96,10 @@ class VectorDB:
         if os.path.exists(csvpath):
             df = pd.read_csv(csvpath)
             image_paths = df["image_path"].to_list()
+            label_llm = ["relevant animal" if label == 1 else "not relevant animal" for label in df["label"].to_list()]
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
-            print(image_path_list_str)
+            for path, labelllm in zip(image_paths, label_llm):
+                self.add_label(image_path=path,label= labelllm, table="relevant")
             df_hits = duckdb.sql(
                 f"""WITH filtered_data AS (
                     SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
@@ -186,7 +188,10 @@ class VectorDB:
         lance_tbl = self.tbl.to_lance()
         original_path = os.environ.get("CSV_PATH")
         original_df = pd.read_csv(original_path)
-        original_df['contains_phrase'] = original_df['description'].str.contains(re.escape(query_string), case=False, na=False)
+        if "description" in original_df.columns:
+            original_df['contains_phrase'] = original_df['description'].str.contains(re.escape(query_string), case=False, na=False)
+        else:
+            original_df['contains_phrase'] = original_df['title'].str.contains(re.escape(query_string), case=False, na=False)
 
         # Filter DataFrame to include only rows where the phrase is found
         filtered_df = original_df[original_df['contains_phrase']]
