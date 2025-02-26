@@ -2,13 +2,16 @@ import * as d3 from 'd3';
 
 // iewof sellerCount = Inputs.range([1, 41], { step: 1, value: 18, label: "Select Number of Top Sellers" });
 // Create the select input for sellers 
-viewof sellerSelect = Inputs.select( [ "All Sellers", "Top Sellers", ...topSellers.map((seller) => seller.seller) ], { value: "Top Sellers", label: "Seller Selection" } );
+// viewof sellerSelect = Inputs.select( [ "All Sellers", "Top Sellers", ...topSellers.map((seller) => seller.seller) ], { value: "Top Sellers", label: "Seller Selection" } );
 
-export function createMap(sellerCount, sellerSelect) {
+export function createMap(data, sellerCount, sellerSelect) {
 
-    const geoJSON = d3.json("countries-50m (1).json");
+    d3.select("div#map").select("svg").remove();
 
-    const animalData = corrected_lat_long_issue.map(row => ({
+    const geoJSON = d3.json("countries-50m.json");
+
+
+    const animalData = data.map(row => ({
         id: row.id,
         url: row.url,
         title: row.title,
@@ -24,7 +27,7 @@ export function createMap(sellerCount, sellerSelect) {
         products: row.products_x,
         animalParts: row.mapped_animal_part_exact_match,
         seller: row.seller
-    }));
+      }));
 
     const filteredAnimalData = animalData.filter(row => 
         row.products && row.animalName && row.seller

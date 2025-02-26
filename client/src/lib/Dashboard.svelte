@@ -66,7 +66,11 @@
     dataGraph.set(chartData);
     products.set(productsCount);
     species.set(speciesCount);
+
+    await createMap(chartData, sellerCount, sellerSelect);
   }
+
+  
 
   function countSellers(data) {
     console.log(data);
@@ -100,11 +104,11 @@
         </div>
       </div>
       <div class="card-body">
-        <label for="select1"><b>Select number of species</b></label>
+        <label for="select2"><b>Select number of top sellers</b></label>
         <select
-          id="speciesCount"
+          id="select2"
           class="form-select block p-2 border border-gray-300 rounded-md"
-          bind:value={speciesCount}
+          bind:value={sellerCount}
         >
           <option value="5">5</option>
           <option value="10">10</option>
@@ -112,7 +116,7 @@
           <option value="20">20</option>
           <option value="25">25</option>
         </select>
-      </div>
+      </div>     
 
       <div class="card-body">
         <label for="select2"><b>Select number of product types</b></label>
@@ -143,7 +147,6 @@
           <option value="25">25</option>
         </select>
       </div>
-
       <div class="card-body">
         <b>Select Price Range</b>
         <!-- Min Value Slider -->
@@ -204,6 +207,13 @@
         <div id="barchart" class="svg-container"></div>
       </div>
     </div>
+    <div class="row">
+      <div class="col-12">
+        <div class="card m-2">
+          <div id="map" class="svg-container"></div>
+        </div>
+      </div>
+    </div>    
     </div>
     <div class="row">
       {#if hits && hits.length > 0}
