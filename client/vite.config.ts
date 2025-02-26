@@ -18,6 +18,10 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/socket.io': {
+        target: 'ws://127.0.0.1:5000/',
+        ws: true,
+      },
     },
   },
 })

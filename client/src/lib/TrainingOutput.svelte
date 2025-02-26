@@ -5,6 +5,9 @@
   import * as d3 from "d3";
   import { projectName } from "./stores"
   import { navigate } from "svelte-routing";
+  // import { socket, initializeSocket } from './stores';
+  // import { get } from 'svelte/store';
+
 
 
   let chartData = {
@@ -19,8 +22,26 @@
     projectId = name;
   });
 
-  const socketURL = "http://localhost:5000"; // Correct URL for your Flask server
-  const socket = io(socketURL, { autoConnect: true });
+  let socketURL;
+
+  if (window.location.port === "80") {
+      socketURL = `${window.location.hostname}`;  // e.g., ws://localhost:5000$ {window.location.port}
+  } else {
+      socketURL = `${window.location.hostname}:${window.location.port}`;  // e.g., wss://myapp.example.com
+  }
+
+  if (window.location.protocol === 'https:'){
+    socketURL = `wss://${socketURL}`;
+  } else {
+    socketURL = `ws://${socketURL}`;
+  }
+
+  console.log("socketURL: ", socketURL)
+
+  const socket = io(socketURL, { autoConnect: true }) //, transports: ['websocket', 'polling']});
+  // socket.on("my response", (msg) => {
+  //   console.log("Received: ", msg);
+  // });
 
   let svg;
   const width = 600;
@@ -154,25 +175,59 @@
 
 
   onMount(() => {
+    // Check if the connection was successful
     socket.on("my response", (msg) => {
       console.log("Received: ", msg);
-      if (msg.hasOwnProperty("step") && msg.step !== null) {
+      if (msg && msg.step && msg.step !== null) {
         updateChartData(msg);
-        steps_training.push(msg.step); // Add the step label to the steps_training array
+        steps_training.push(msg.step);  // Add the step label
         createChart(); // Re-create the chart with updated data
       }
     });
   });
 
+  // onMount(() => {
+  //   initializeSocket();  // Initialize socket if not done yet
+
+  //   // Access the socket instance using get() and add event listeners
+  //   const $socket = get(socket);
+
+  //   if ($socket) {
+  //       // Set up the socket event listener
+  //       $socket.on("my response", (msg: any) => {
+  //           console.log("Received:", msg);
+  //           if (msg.hasOwnProperty("step") && msg.step !== null) {
+  //               // Update chart data and re-render the chart
+  //               steps_training.push(msg.step);
+  //               updateChartData(msg);
+  //               createChart();
+  //           }
+  //       });
+  //   }
+
+  //   // Cleanup socket listeners when the component is destroyed
+  //   return () => {
+  //       if ($socket) {
+  //           $socket.off("my response");  // Remove the listener
+  //       }
+  //   };
+  // });
+
+
+
+
   async function interference() {
+    console.log("finish")
     socket.emit("stop_training", { projectId: projectId, labeling: ""});
   }
 
   async function startTraining(){
+    console.log("starrt")
     socket.emit("start training", { projectId: projectId , labeling: ""});
   }
 
   async function restartTraining() {
+    console.log("restart")
     socket.emit("start retrain", { projectId: projectId , labeling: "file"});
   }
 
