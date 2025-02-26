@@ -126,11 +126,11 @@
         </select>
       </div>
 
-      <div class="card-body">
-        <b>Select Price Range</b>
+      <!-- <div class="card-body">
+        <b>Select Price Range</b> -->
         <!-- Min Value Slider -->
         <!-- <label for="min-range" class="block mb-2">Set Minimum Value</label> -->
-        <input
+        <!-- <input
           id="min-range"
           type="range"
           min="0"
@@ -139,11 +139,11 @@
           bind:value={minValue}
           class="form-range block border border-gray-300 rounded-md"
         />
-        <div class="mt-2 text-sm text-gray-600">Min: {minValue}</div>
+        <div class="mt-2 text-sm text-gray-600">Min: {minValue}</div> -->
 
         <!-- Max Value Slider -->
         <!-- <label for="max-range" class="block">Set Maximum Value</label> -->
-        <input
+        <!-- <input
           id="max-range"
           type="range"
           min="0"
@@ -151,9 +151,9 @@
           step="1"
           bind:value={maxValue}
           class="form-range block border border-gray-300 rounded-md"
-        />
-        <div class="mt-2 text-sm text-gray-600">Max: {maxValue}</div>
-      </div>
+        /> -->
+        <!-- <div class="mt-2 text-sm text-gray-600">Max: {maxValue}</div>
+      </div> -->
 
       <div class="card-body">
         <button on:click={getData} class="btn btn-info mb-2 mt-2">
@@ -175,16 +175,15 @@
   <div class="col-8">
     <div class="row">
       <div class="col-5">
-        <div class="card m-2">
+        <!-- <div class="card m-2"> -->
         <div id="heatmap" class="svg-container"></div>
-      </div>
-
+      <!-- </div> -->
     </div>
       <div class="col-5">
-        <div class="card m-2">
+        <!-- <div class="card m-2"> -->
         <!-- <h3>Visualization Area 2</h3> -->
         <div id="barchart" class="svg-container"></div>
-      </div>
+      <!-- </div> -->
     </div>
     </div>
     <div class="row">

@@ -33,9 +33,11 @@ stop_task = False
 # Path for our main Svelte app. All routes in the app must be added
 # here to allow refreshing to work correctly.
 @app.route("/")
+@app.route("/csv-loader")
+@app.route("/search/seller")
 @app.route("/search/random")
 @app.route("/search/image")
-@app.route("/search/seller")
+@app.route("/dashboard")
 @app.route("/labels")
 @app.route("/bootstrap")
 def base():

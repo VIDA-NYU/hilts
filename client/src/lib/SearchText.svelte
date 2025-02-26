@@ -16,33 +16,24 @@
       allSelectedData = storeSelectedData;
     });
 
-
-    function searchSeller(searchPath: string){
-      const params = new URLSearchParams(searchPath);
-      const queryStr = params.get("q");
-      if (queryStr){
-        result = SellerSearch(queryStr, +limit, excludeLabeled);
-          result.then( (hits: Hits) => {
-            if (result) {
-              const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));
-              selectedDataStore.update((storeSelectedData) => {
-                return { ...Object.assign({}, ...imagePaths) };
-              });
-            }
-          })
-      }
-      };
-
     function onQuerySubmit() {
-      searchSeller(location.search)
-    };
-
-    export let location: Location;
-    $: {
-      console.log(location);
-      // this block is reactively triggered whenever the location variable (which contains the URL) changes
-      searchSeller(location.search);
+      result = SellerSearch(queryStr, +limit, excludeLabeled);
+      result.then( (hits: Hits) => {
+        if (result) {
+          const imagePaths = hits.hits.map((item) => ({[item.image_path]: true}));
+          selectedDataStore.update((storeSelectedData) => {
+            return { ...Object.assign({}, ...imagePaths) };
+          });
+        }
+      });
     }
+
+    // export let location: Location;
+    // $: {
+    //   console.log(location);
+    //   // this block is reactively triggered whenever the location variable (which contains the URL) changes
+    //   searchSeller(location.search);
+    // }
 
     function clearSearch() {
       queryStr = "";

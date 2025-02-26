@@ -63,11 +63,11 @@
           <div class="navbar-nav nav-underline">
             <Link to="/csv-loader" getProps={getLinkProps}>Setup Tracker</Link>
             <Link to="/result" getProps={getLinkProps}>LTS Results</Link>
-            <!-- <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link> -->
-            <!-- <Link to="/" getProps={getLinkProps}>Keyword Search</Link> -->
+            <Link to="/dashboard" getProps={getLinkProps}>Dashboard</Link>
+            <Link to="/search/seller" getProps={getLinkProps}>Seller Search</Link>
+            <Link to="/" getProps={getLinkProps}>Keyword Search</Link>
             <Link to="/search/random" getProps={getLinkProps}>Labeling</Link>
             <!-- <Link to="/search/image" getProps={getLinkProps}>Image Search</Link> -->
-            <Link to="/dashboard" getProps={getLinkProps}>Dashboard</Link>
             <Link to="/labels" getProps={getLinkProps}>Labels</Link>
             <!-- <Link to="/bootstrap" getProps={getLinkProps}>Bootstrap</Link> -->
           </div>
@@ -84,7 +84,8 @@
         location={window.location}
       />
       <Route path="/labels" component={LabeledData} />
-      <Route path="/search/seller" component={SearchText} location={window.location} />
+      <Route path="/search/seller" component={SearchText}/>
+       <!-- location={window.location} /> -->
       <Route path="/csv-loader" component={CSVLoader} /> <!-- Add the route for CSV Loader -->
       <Route path="/result" component={TrainingOutput} location={window.location} />
       <Route path="/dashboard" component={Dashboard} />

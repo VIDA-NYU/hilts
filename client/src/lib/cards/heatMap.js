@@ -270,7 +270,7 @@ export function createChart(chartData, productsCount, speciesCount, HandleClick)
     .attr("x", 25)
     .attr("y", -10)
     .attr("text-anchor", "end")
-    .attr("font-size", "16px")
+    .attr("font-size", "20px")
     .attr("font-weight", "bold")
     .text("Count");
 
@@ -279,7 +279,7 @@ export function createChart(chartData, productsCount, speciesCount, HandleClick)
     .attr("x", (visWidth + margin.left + margin.right) / 2)
     .attr("y", margin.top / 2)
     .attr("text-anchor", "middle")
-    .attr("font-size", "16px")
+    .attr("font-size", "30px")
     .attr("font-weight", "bold")
     .text("Sold Products types and Associated Animal Species");
 

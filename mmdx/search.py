@@ -188,7 +188,10 @@ class VectorDB:
         lance_tbl = self.tbl.to_lance()
         original_path = os.environ.get("CSV_PATH")
         original_df = pd.read_csv(original_path)
-        original_df['contains_phrase'] = original_df['description'].str.contains(re.escape(query_string), case=False, na=False)
+        if "description" in original_df.columns:
+            original_df['contains_phrase'] = original_df['description'].str.contains(re.escape(query_string), case=False, na=False)
+        else:
+            original_df['contains_phrase'] = original_df['title'].str.contains(re.escape(query_string), case=False, na=False)
 
         # Filter DataFrame to include only rows where the phrase is found
         filtered_df = original_df[original_df['contains_phrase']]
