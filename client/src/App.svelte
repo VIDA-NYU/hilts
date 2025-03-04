@@ -84,8 +84,7 @@
         location={window.location}
       />
       <Route path="/labels" component={LabeledData} />
-      <Route path="/search/seller" component={SearchText}/>
-       <!-- location={window.location} /> -->
+      <Route path="/search/seller" component={SearchText} location={window.location} />
       <Route path="/csv-loader" component={CSVLoader} /> <!-- Add the route for CSV Loader -->
       <Route path="/result" component={TrainingOutput} location={window.location} />
       <Route path="/dashboard" component={Dashboard} />
