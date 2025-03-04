@@ -5,6 +5,7 @@
     import ImageCard from "./ImageCard.svelte";
     import LabelAll from "./LabelAll.svelte";
     import {selectedDataStore } from "./stores";
+    import { navigate } from "svelte-routing";
 
     let limit: string = "64";
     let excludeLabeled: boolean = false;
@@ -34,12 +35,11 @@
       };
 
     function onQuerySubmit() {
-      searchSeller(location.search)
+      navigate("/search/seller?q=" + queryStr);
     };
 
     export let location: Location;
     $: {
-      console.log(location);
       // this block is reactively triggered whenever the location variable (which contains the URL) changes
       searchSeller(location.search);
     }
