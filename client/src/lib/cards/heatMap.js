@@ -12,7 +12,8 @@ export function createChart(chartData, productsCount, speciesCount, HandleClick)
     const svg = d3.select("div#heatmap")
         .append("svg")
         .attr("preserveAspectRatio", "xMinYMin meet")
-        .attr("viewBox", "0 0 1100 900")
+        // .attr("viewBox", "0 0 1100 900")
+        .attr("viewBox", "0 0 750 460")
         .classed("svg-content-responsive", true);
 
     // Access the size of the SVG container

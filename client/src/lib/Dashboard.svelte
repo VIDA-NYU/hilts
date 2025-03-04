@@ -26,8 +26,14 @@
 
   onMount(() => {
     // Initial chart creation when the component mounts
-    if (graphData && productsCount && speciesCount) {
-      createChart(graphData, productsCount, speciesCount, HandleClick);
+    // if (Object.keys(graphData).length !== 0 && productsCount && speciesCount) {
+    if (Object.keys(graphData).length !== 0) {
+      const {
+        chartData,
+        productsCount,
+        speciesCount,
+      } = graphData;
+      createChart(chartData, productsCount, speciesCount, HandleClick);
     }
   });
 
@@ -60,9 +66,13 @@
     chartData = response;
 
     createChart(chartData, productsCount, speciesCount, HandleClick);
-    dataGraph.set(chartData);
-    products.set(productsCount);
-    species.set(speciesCount);
+    dataGraph.set({
+      chartData,
+      productsCount,
+      speciesCount,
+    });
+    // products.set(productsCount);
+    // species.set(speciesCount);
   }
 
   function countSellers(data) {
@@ -176,13 +186,13 @@
     <div class="row">
       <div class="col-5">
         <!-- <div class="card m-2"> -->
-        <div id="heatmap" class="svg-container"></div>
+        <div id="heatmap" class="__svg-container"></div>
       <!-- </div> -->
     </div>
       <div class="col-5">
         <!-- <div class="card m-2"> -->
         <!-- <h3>Visualization Area 2</h3> -->
-        <div id="barchart" class="svg-container"></div>
+        <div id="barchart" class="__svg-container"></div>
       <!-- </div> -->
     </div>
     </div>
