@@ -162,10 +162,10 @@
       </li> -->
     <!-- {/each} -->
       </p>
-      <div class="btn-toolbar">
+      <div class="btn-toolbar mb-1">
         <!-- <div class="btn-group" role="group" aria-label=""> -->
           <button
-            class="btn btn-success"
+            class="btn btn-success me-1"
             on:click={() => addLabelExclusive("animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-up" aria-hidden="true" />
@@ -241,6 +241,7 @@
             <button
               class="btn btn-sm btn-info me-1"
               on:click={() => navigate("/search/seller?q=" + parsedHitMetadata["seller"])}
+              disabled={!parsedHitMetadata["seller"]}
             >
               <i class="fa fa-search me-1" aria-hidden="true" />
               Search Seller
