@@ -39,9 +39,6 @@
   console.log("socketURL: ", socketURL)
 
   const socket = io(socketURL, { autoConnect: true }) //, transports: ['websocket', 'polling']});
-  // socket.on("my response", (msg) => {
-  //   console.log("Received: ", msg);
-  // });
 
   let svg;
   const width = 600;

@@ -179,11 +179,11 @@ export async function getData(projectId: string) {
   }
 
 
-export async function startLTSDataGeneration(
+export async function createLtsConfig(
   ProjectId: string,
   argsDict: object
 ) {
-  const url = `${API_URL}/load/start_lts_generation`;
+  const url = `${API_URL}/load/create_lts_config`;
   let responseMessage = "";
   console.log(url);
 

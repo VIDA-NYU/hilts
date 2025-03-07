@@ -182,7 +182,7 @@ def download_binary_labeled_data():
     print("Created zip file: ", output_zip_file)
     return send_file(output_zip_file, as_attachment=True)
 
-@app.route("/api/v1/load/start_lts_generation", methods=['POST'])
+@app.route("/api/v1/load/create_lts_config", methods=['POST'])
 def start_lts_generation():
     try:
         data = request.get_json()
@@ -464,6 +464,6 @@ else:
 if __name__ == "__main__":
     if os.environ.get("ENV") == "prod":
         # app.run(debug=False, host="0.0.0.0")
-        socketio.run(app, debug=False, host="0.0.0.0")
+        socketio.run(app, debug=False, host="0.0.0.0", port=5000)
     else:
-        socketio.run(app, debug=True, host="127.0.0.1")
+        socketio.run(app, debug=True, host="127.0.0.1", port=5000)

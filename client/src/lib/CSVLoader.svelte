@@ -86,10 +86,11 @@
   }
 
   // Start the LTS data generation
-  async function startLTSGenerator() {
+  async function createLtsConfig() {
+    updateArgs()
     saving = true;
     try {
-      const response = await api.startLTSDataGeneration(projectId, argsDict); // Pass the entered project ID and argsDict to the API
+      const response = await api.createLtsConfig(projectId, argsDict); // Pass the entered project ID and argsDict to the API
       responseMessageSave = "Project Saved!";
       console.log(response);
     } catch (error) {
@@ -219,7 +220,7 @@
 
 
 <!-- Modal for LTS Data Generator -->
-<Modal bind:showModal={showModal} closeBtnName="Save" onCloseAction={updateArgs}>
+<Modal bind:showModal={showModal} closeBtnName="Save" onCloseAction={createLtsConfig}>
   <h2 slot="header">LTS Settings</h2>
   <div slot="body">
     <!-- Modal Content (LTS Parameters) -->
