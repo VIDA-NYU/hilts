@@ -92,7 +92,7 @@ class VectorDB:
 
     def random_hilts_search(self, limit: int, projectId: str) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
-        csvpath =f"{projectId}/current_sample_training.csv"
+        csvpath =f"/data/{projectId}/current_sample_training.csv"
         if os.path.exists(csvpath):
             df = pd.read_csv(csvpath)
             image_paths = df["image_path"].to_list()

@@ -178,6 +178,111 @@ export async function getData(projectId: string) {
 
   }
 
+export async function getResults(projectId: string) {
+  const url = `${API_URL}/get_results/${encodeURIComponent(projectId)}`;
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json"
+    }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data
+  } catch (error) {
+    console.error('Fetching error:', error);
+  }
+
+}
+
+
+export async function startTraining(
+  argsDict: object
+) {
+  const url = `${API_URL}/start_training`;
+  let responseMessage = "";
+  console.log(url);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ argsDict }),
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.ok) {
+      const responseData = await response.json();
+      responseMessage = "Model training started successfully";
+      console.log("Model training started:", responseData);
+    } else {
+      responseMessage = "Failed to start training";
+      console.error("Failed to start training:", response.statusText);
+    }
+  } catch (error) {
+    responseMessage = "Error start training";
+    console.error("Error start training:", error);
+  }
+  return responseMessage;
+}
+
+export async function restartTraining(
+  argsDict: object
+) {
+  const url = `${API_URL}/restart_training`;
+  let responseMessage = "";
+  console.log(url);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ argsDict }),
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.ok) {
+      const responseData = await response.json();
+      responseMessage = "Model training started successfully";
+      console.log("Model training started:", responseData);
+    } else {
+      responseMessage = "Failed to start training";
+      console.error("Failed to start training:", response.statusText);
+    }
+  } catch (error) {
+    responseMessage = "Error start training";
+    console.error("Error start training:", error);
+  }
+  return responseMessage;
+}
+
+export async function stopTraining(
+  argsDict: object
+) {
+  const url = `${API_URL}/stop_training`;
+  let responseMessage = "";
+  console.log(url);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ argsDict }),
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.ok) {
+      const responseData = await response.json();
+      responseMessage = "Model training stopped successfully";
+      console.log("Model training stopped:", responseData);
+    } else {
+      responseMessage = "Failed to stop training";
+      console.error("Failed to stop training:", response.statusText);
+    }
+  } catch (error) {
+    responseMessage = "Error stop training";
+    console.error("Error stop training:", error);
+  }
+  return responseMessage;
+}
 
 export async function createLtsConfig(
   ProjectId: string,

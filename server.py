@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 import pandas as pd
 from flask import Flask, send_from_directory, send_file, request, jsonify
-from flask_socketio import SocketIO
+# from flask_socketio import SocketIO
 from mmdx.search import VectorDB
 from mmdx.model import ClipModel
 from mmdx.settings import (
@@ -26,7 +26,7 @@ from LTS.main import initialize_LTS
 from LTS.lts_processing import LTS
 
 app = Flask(__name__)
-socketio = SocketIO(app) #cors_allowed_origins="*"
+# socketio = SocketIO(app) #cors_allowed_origins="*"
 
 
 stop_task = False
@@ -43,34 +43,49 @@ stop_task = False
 def base():
     return send_from_directory("client/dist/", "index.html")
 
-@socketio.on('my event')
-def test_message(message):
-    socketio.emit('my response', {'data': f'{random.random()}' })
+# @socketio.on('my event')
+# def test_message(message):
+#     socketio.emit('my response', {'data': f'{random.random()}' })
 
-@socketio.on('start training')
-def test_message(message):
+@app.route("/api/v1/start_training", methods=['POST'])
+def start_training():
     print("start")
+    data = request.get_json()
+    args = data.get('argsDict')
     global stop_task
     stop_task = False
-    socketio.start_background_task(target=train_model, message=message)
-    socketio.emit('my response', {'message': 'Training started!'})
+    train_model(args)
+    # socketio.start_background_task(target=train_model, message=message)
+    # socketio.emit('my response', {'message': 'Training started!'})
 
-@socketio.on('start retrain')
-def test_message(message):
+@app.route("/api/v1/restart_training", methods=['POST'])
+def start_retraining(message):
     global stop_task
     stop_task = False
+    data = request.get_json()
+    args = data.get('argsDict')
     db.create_hilts_data(
-        dirc=message["projectId"]
+        dirc=args["projectId"]
     )
-    socketio.start_background_task(target=train_model, message=message)
-    socketio.emit('my response', {'message': 'Training started!'})
 
-@socketio.on('stop_training')
-def test_disconnect(message):
+    train_model(args)
+    # socketio.start_background_task(target=train_model, message=message)
+    # socketio.emit('my response', {'message': 'Training started!'})
+
+@app.route("/api/v1/stop_training", methods=['POST'])
+def stop_training():
     global stop_task
     stop_task = True
-    print('Client disconnected')
+    return True
 
+@app.route("/api/v1/get_results/<projectId>", methods=['GET'])
+def get_training_results(projectId) -> pd.DataFrame:
+    result_path = f"/data/{projectId}/results_logs.json"
+    if os.path.exists(result_path):
+        with open(result_path, "r") as json_file:
+            result_json = json.load(json_file)
+        return result_json
+    return None
 
 # Path for all the static files (compiled JS/CSS, etc.)
 @app.route("/<path:path>")
@@ -191,9 +206,9 @@ def start_lts_generation():
         project_id = data.get('ProjectId')
         if not args:
             return {'message': 'No prompt provided'}
-        if not os.path.exists(project_id):
-            os.makedirs(project_id)
-        with open(f"{project_id}/config_file.json", "w") as file:
+        if not os.path.exists(f"/data/{project_id}"):
+            os.makedirs(f"/data/{project_id}")
+        with open(f"/data/{project_id}/config_file.json", "w") as file:
             json.dump(args, file)
         return {'message': 'config create successfully'}
         # main(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, retrain, idx, id)
@@ -201,18 +216,18 @@ def start_lts_generation():
     except Exception as e:
         return {'message': f'Config file not create {e}'}
 
-def train_model(message):
+def train_model(argsDict):
     import numpy as np
-    label_hilts = message.get("labeling")
-    project_id = message["projectId"]
-    result_path = f"{project_id}/results_logs.json"
+    label_hilts = argsDict.get("labeling")
+    project_id = argsDict.get("projectId")
+    result_path = f"/data/{project_id}/results_logs.json"
     args, sampler, data, trainer, labeler = initialize_LTS(project_id)
     budget = args.get("budget")
     budget_value = int(args.get("bugetValue"))
     if os.path.exists(result_path):
         with open(result_path, "r") as json_file:
             result_json = json.load(json_file)
-            socketio.emit('my response', result_json)
+            # socketio.emit('my response', result_json)
     if budget == "trainingSize":
         loops = int(budget_value/args.get("sample_size"))
         for idx in range(loops):
@@ -231,7 +246,7 @@ def train_model(message):
                     "f1_score": [res["eval_f1"]],
                     "accuracy": [res["eval_accuracy"]]
                 }
-            socketio.emit('my response', result)
+            # socketio.emit('my response', result)
 
             if not os.path.exists(result_path):
                 with open(result_path, "w") as json_file:
@@ -247,7 +262,7 @@ def train_model(message):
                 with open(result_path, "w") as json_file:
                     json.dump(result_json, json_file, indent=4)
 
-            data = pd.read_csv(f"{project_id}/current_sample_training.csv")
+            data = pd.read_csv(f"/data/{project_id}/current_sample_training.csv")
             data["relevant"] = np.where(data["label"]==1, "animal origin", "not animal origin")
             global db
             for _, row in data.iterrows():
@@ -275,13 +290,15 @@ def train_model(message):
             # training_results.append(result)
 
             # Emit the training result after each step
-            socketio.emit('my response', result)
-            time.sleep(120)
+            # socketio.emit('my response', result)
+            # time.sleep(120)
 
     if not stop_task:
-        socketio.emit('my response', {'message': 'Training complete!'})
+        return()
+        # socketio.emit('my response', {'message': 'Training complete!'})
     else:
-        socketio.emit('my response', {'message': 'Training stopped by user'})
+        return()
+        # socketio.emit('my response', {'message': 'Training stopped by user'})
     # Emit a final message when training is complete
 
 # def train_model(message):
@@ -377,7 +394,7 @@ def train_model(message):
 
 @app.route("/api/v1/get_data/<projectId>", methods=['GET'])
 def create_products_data(projectId) -> pd.DataFrame:
-    df = pd.read_csv(f"{projectId}/filename.csv")
+    df = pd.read_csv(f"/data/{projectId}/filename.csv")
     df = df[["seller", "image_path", "products", "animal_name_match"]]
     df.rename(columns={"animal_name_match": "animalName"}, inplace=True)
     data = df.to_json(orient='records')
@@ -463,7 +480,7 @@ else:
 
 if __name__ == "__main__":
     if os.environ.get("ENV") == "prod":
-        # app.run(debug=False, host="0.0.0.0")
-        socketio.run(app, debug=False, host="0.0.0.0", port=5000)
+        app.run(debug=False, host="0.0.0.0")
+        # socketio.run(app, debug=False, host="0.0.0.0", port=5000)
     else:
-        socketio.run(app, debug=True, host="127.0.0.1", port=5000)
+        app.run(app, debug=True, host="127.0.0.1")
