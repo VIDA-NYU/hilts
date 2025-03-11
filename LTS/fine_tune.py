@@ -105,7 +105,7 @@ class BertFineTuner:
         import os
 
         # Ensure the directories exist
-        log_dir_path = f"{self.project_id}/log"
+        log_dir_path = f"data/{self.project_id}/log"
 
         # Create the directory if it doesn't exist
         os.makedirs(log_dir_path, exist_ok=True)
@@ -287,6 +287,6 @@ class EarlyStoppingCallback(TrainerCallback):
                         control.should_training_stop = True
                 # Save logs
                 if self.log_dir:
-                    with open(f"{self.project_id}/{self.log_dir}/epoch_{state.epoch}.txt", "w") as f:
+                    with open(f"data/{self.project_id}/{self.log_dir}/epoch_{state.epoch}.txt", "w") as f:
                         for log in state.log_history:
                             f.write(f"{log}\n")

@@ -14,13 +14,13 @@ class ThompsonSampler:
         self.beta = beta   # Prior parameter for Beta distribution (failures)
         self.decay = decay
         try:
-            self.selected_ids = set(np.loadtxt(f'{self.project_id}/selected_ids.txt', dtype=str))
+            self.selected_ids = set(np.loadtxt(f'data/{self.project_id}/selected_ids.txt', dtype=str))
         except IOError:
             self.selected_ids = set()
 
         try:
-            self.wins = np.loadtxt(f'{self.project_id}/wins.txt')
-            self.losses = np.loadtxt(f'{self.project_id}/losses.txt')
+            self.wins = np.loadtxt(f'data/{self.project_id}/wins.txt')
+            self.losses = np.loadtxt(f'data/{self.project_id}/losses.txt')
         except IOError:
             self.wins = np.zeros(n_bandits)
             self.losses = np.zeros(n_bandits)
@@ -40,8 +40,8 @@ class ThompsonSampler:
         self.wins *= self.decay
         self.losses *= self.decay
 
-        np.savetxt(f'{self.project_id}/wins.txt', self.wins)
-        np.savetxt(f'{self.project_id}/losses.txt', self.losses)
+        np.savetxt(f'data/{self.project_id}/wins.txt', self.wins)
+        np.savetxt(f'data/{self.project_id}/losses.txt', self.losses)
 
     def get_sample_data(self, df, sample_size, filter_label: bool, trainer: Any, labeling: str, filename: str):
 
@@ -50,8 +50,8 @@ class ThompsonSampler:
             return filtered_df
 
         if labeling == "file":
-            if os.path.exists(f"{self.project_id}/{filename}.csv"):
-                new_labels_df = pd.read_csv("hilts_data.csv")
+            if os.path.exists(f"data/{self.project_id}/{filename}.csv"):
+                new_labels_df = pd.read_csv(f"data/{self.project_id}/hilts_data.csv")
                 self.update_labels(filename, new_labels_df)
             return new_labels_df, new_labels_df["label_cluster"].unique()[0]
 
@@ -91,16 +91,16 @@ class ThompsonSampler:
 
         # Add the IDs of sampled data to the selected_ids set
         self.selected_ids.update(data['id'])
-        with open(f'{self.project_id}/selected_ids.txt', 'w') as f:
+        with open(f'data/{self.project_id}/selected_ids.txt', 'w') as f:
             f.write('\n'.join(self.selected_ids))
 
         return data, chosen_bandit
 
     def update_labels(self, filename, new_labels_df):
         # Check if the CSV file exists
-        if os.path.exists(f"{self.project_id}/{filename}.csv"):
+        if os.path.exists(f"data/{self.project_id}/{filename}.csv"):
             # Read the original data (df)
-            df = pd.read_csv(f"{self.project_id}/{filename}.csv")
+            df = pd.read_csv(f"data/{self.project_id}/{filename}.csv")
 
             # Ensure that the 'id' or common column is present to match the rows for updating
             if "id" not in df.columns or "id" not in new_labels_df.columns:
@@ -116,7 +116,7 @@ class ThompsonSampler:
             updated_df = updated_df.drop(columns=['label_corrected'])
 
             # Save the updated DataFrame back to CSV
-            updated_df.to_csv(f"{self.project_id}/{filename}.csv", index=False)
+            updated_df.to_csv(f"data/{self.project_id}/{filename}.csv", index=False)
 
             print(f"Labels updated and saved to {self.project_id}/{filename}.csv")
         else:

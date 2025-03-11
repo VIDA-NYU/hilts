@@ -22,7 +22,7 @@ def parse_args(project_id):
 
     # def parse_args(project_id):
     try:
-        config = read_config(f"{project_id}/config_file.json")
+        config = read_config(f"data/{project_id}/config_file.json")
     except Exception as e:
         raise ValueError(f"Config file is required: {e}")
     return config
@@ -46,7 +46,7 @@ def update_config(project_id, new_info):
     """
     Updates the configuration file for a given project ID with new information.
     """
-    config_file = f"{project_id}/config_file.json"
+    config_file = f"data/{project_id}/config_file.json"
 
     config = read_config(config_file)
 
@@ -58,11 +58,12 @@ def update_config(project_id, new_info):
     budget_used = new_info.get("bugetValue")
     if budget_used:
         loop_left = loops - (budget_used)
-
+    else:
+        loop_left = loops
     budget = loop_left * sample_size
 
     config["model_finetune"] = new_info.get("model_finetune", config.get("model_finetune"))
-    config["budget"] = budget
+    config["bugetValue"] = budget
     config["baseline"] = new_info.get("baseline", config.get("baseline"))
 
     # Save the updated config back to the file

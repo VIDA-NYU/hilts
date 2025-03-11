@@ -97,9 +97,9 @@ class TextClustering:
             raise ValueError("Unknown algorithm. Please choose from 'agglo', 'kmeans', 'gmm' or 'lda'.")
 
     def save_csv(self, filename, data):
-        if os.path.exists(f"{self.project_id}/{filename}.csv"):
-            data_saved = pd.read_csv(f"{self.project_id}/{filename}.csv")
+        if os.path.exists(f"data/{self.project_id}/{filename}.csv"):
+            data_saved = pd.read_csv(f"data/{self.project_id}/{filename}.csv")
             data = pd.concat([data, data_saved])
-            data.to_csv(f"{self.project_id}/{filename}.csv", index=False)
+            data.to_csv(f"data/{self.project_id}/{filename}.csv", index=False)
         else:
-            data.to_csv(f"{self.project_id}/{filename}.csv", index=False)
+            data.to_csv(f"data/{self.project_id}/{filename}.csv", index=False)

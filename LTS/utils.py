@@ -13,10 +13,10 @@ def create_clustered_data(preprocessor, algorithm, cluster_size, project_id):
     Returns the processed DataFrame.
     """
     try:
-        data = pd.read_csv(project_id + "/" + "filename" + "_cluster_data.csv")
+        data = pd.read_csv("data/" + project_id + "/" + "filename" + "_cluster_data.csv")
         print("Using data saved on disk")
     except FileNotFoundError:
-        data = pd.read_csv(project_id + "/" + "filename" + ".csv")
+        data = pd.read_csv("data/" + project_id + "/" + "filename" + ".csv")
         data = preprocessor.preprocess_df(data)
 
         print("Creating LDA")
@@ -73,12 +73,12 @@ def print_summary(sampler):
     print(sampler.losses)
 
 def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, id):
-    if os.path.exists(f'{id}/validation.csv'):
-        validation = pd.read_csv(f'{id}/validation.csv')
+    if os.path.exists(f'data/{id}/validation.csv'):
+        validation = pd.read_csv(f'data/{id}/validation.csv')
     elif validation_path:
         validation = pd.read_csv(validation_path)
         validation = preprocessor.preprocess_df(validation)
-        save_validation_data(validation, f"{id}/validation.csv")
+        save_validation_data(validation, f"data/{id}/validation.csv")
     else:
         sampler = RandomSampler(data['label_cluster'].nunique(), id)
         sample_validation, _ = sampler.create_validation_data(data, validation_size)
@@ -87,7 +87,7 @@ def prepare_validation(validation_path, validation_size, data, labeler, preproce
             validation["answer"] = validation.apply(lambda x: labeler.predict_animal_product(x), axis=1)
             validation["answer"] = validation["answer"].str.strip()
             validation["label"] = np.where(validation["answer"].str.contains("not a relevant product"), 0, 1)
-        save_validation_data(validation, f"{id}/validation.csv")
+        save_validation_data(validation, f"data/{id}/validation.csv")
     return validation
 
 def initialize_trainer(model, model_finetune, validation, project_id):

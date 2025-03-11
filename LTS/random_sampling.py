@@ -7,13 +7,13 @@ class RandomSampler:
         self.n_bandits = n_bandits
         self.id = id
         try:
-            self.selected_ids = set(np.loadtxt(f'{id}/selected_ids.txt', dtype=str))
+            self.selected_ids = set(np.loadtxt(f'data/{id}/selected_ids.txt', dtype=str))
         except IOError:
             self.selected_ids = set()
 
     def get_selected_id(self):
         try:
-            self.selected_ids = set(np.loadtxt(f'{self.id}/selected_ids.txt', dtype=str))
+            self.selected_ids = set(np.loadtxt(f'data/{self.id}/selected_ids.txt', dtype=str))
         except IOError:
             self.selected_ids = set()
         return self.selected_ids
@@ -34,7 +34,7 @@ class RandomSampler:
         sampled_data = sampled_data.sample(frac=1, random_state=42).reset_index(drop=True)
         # Add the IDs of sampled data to the selected_ids set to not add this data on the training set
         self.selected_ids.update(sampled_data['id'])
-        with open(f'{self.id}/selected_ids.txt', 'w') as f:
+        with open(f'data/{self.id}/selected_ids.txt', 'w') as f:
             f.write('\n'.join(self.selected_ids))
 
         return sampled_data, "random"
@@ -60,7 +60,7 @@ class RandomSampler:
 
             # Add the IDs of sampled data to the selected_ids set
             self.selected_ids.update(sampled_data['id'])
-            with open(f'{self.id}/selected_ids.txt', 'w') as f:
+            with open(f'data/{self.id}/selected_ids.txt', 'w') as f:
                 f.write('\n'.join(self.selected_ids))
 
             return sampled_data, "random"

@@ -92,7 +92,7 @@ class VectorDB:
 
     def random_hilts_search(self, limit: int, projectId: str) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
-        csvpath =f"/data/{projectId}/current_sample_training.csv"
+        csvpath =f"data/{projectId}/current_sample_training.csv"
         if os.path.exists(csvpath):
             df = pd.read_csv(csvpath)
             image_paths = df["image_path"].to_list()
@@ -429,7 +429,7 @@ class VectorDB:
     def create_hilts_data(self, dirc) -> str:
         result, column_names = self.labelsdb.create_labeled_data()
         df = pd.DataFrame(result, columns=column_names)
-        original_df = pd.read_csv(f"{dirc}/current_sample_training.csv")
+        original_df = pd.read_csv(f"data/{dirc}/current_sample_training.csv")
         original_df = original_df.set_index("image_path")
         cols_to_use = df.columns.difference(original_df.columns)
         # join both
@@ -437,4 +437,4 @@ class VectorDB:
         df["relevant_"] = np.where(df["relevant"] == "not animal origin", 0,1)
         df["relevant_"] = np.where(df["relevant"].isnull(), None, df["relevant_"])
         df["label"] = np.where(df["relevant_"].isnull(), df["label"], df["relevant_"])
-        df.to_csv(f"{dirc}/hilts_data.csv", index=False)
+        df.to_csv(f"data/{dirc}/hilts_data.csv", index=False)

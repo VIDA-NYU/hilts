@@ -55,6 +55,7 @@ def start_training():
     global stop_task
     stop_task = False
     train_model(args)
+    return {'message': 'Train Finished'}
     # socketio.start_background_task(target=train_model, message=message)
     # socketio.emit('my response', {'message': 'Training started!'})
 
@@ -71,21 +72,22 @@ def start_retraining(message):
     train_model(args)
     # socketio.start_background_task(target=train_model, message=message)
     # socketio.emit('my response', {'message': 'Training started!'})
+    return {'message': 'Train Finished'}
 
 @app.route("/api/v1/stop_training", methods=['POST'])
 def stop_training():
     global stop_task
     stop_task = True
-    return True
+    return {'message': 'Train Stopped'}
 
 @app.route("/api/v1/get_results/<projectId>", methods=['GET'])
 def get_training_results(projectId) -> pd.DataFrame:
-    result_path = f"/data/{projectId}/results_logs.json"
+    result_path = f"data/{projectId}/results_logs.json"
     if os.path.exists(result_path):
         with open(result_path, "r") as json_file:
             result_json = json.load(json_file)
         return result_json
-    return None
+    return {}
 
 # Path for all the static files (compiled JS/CSS, etc.)
 @app.route("/<path:path>")
@@ -206,9 +208,9 @@ def start_lts_generation():
         project_id = data.get('ProjectId')
         if not args:
             return {'message': 'No prompt provided'}
-        if not os.path.exists(f"/data/{project_id}"):
-            os.makedirs(f"/data/{project_id}")
-        with open(f"/data/{project_id}/config_file.json", "w") as file:
+        if not os.path.exists(f"data/{project_id}"):
+            os.makedirs(f"data/{project_id}")
+        with open(f"data/{project_id}/config_file.json", "w") as file:
             json.dump(args, file)
         return {'message': 'config create successfully'}
         # main(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, retrain, idx, id)
@@ -220,7 +222,7 @@ def train_model(argsDict):
     import numpy as np
     label_hilts = argsDict.get("labeling")
     project_id = argsDict.get("projectId")
-    result_path = f"/data/{project_id}/results_logs.json"
+    result_path = f"data/{project_id}/results_logs.json"
     args, sampler, data, trainer, labeler = initialize_LTS(project_id)
     budget = args.get("budget")
     budget_value = int(args.get("bugetValue"))
@@ -262,7 +264,7 @@ def train_model(argsDict):
                 with open(result_path, "w") as json_file:
                     json.dump(result_json, json_file, indent=4)
 
-            data = pd.read_csv(f"/data/{project_id}/current_sample_training.csv")
+            data = pd.read_csv(f"data/{project_id}/current_sample_training.csv")
             data["relevant"] = np.where(data["label"]==1, "animal origin", "not animal origin")
             global db
             for _, row in data.iterrows():
@@ -394,7 +396,7 @@ def train_model(argsDict):
 
 @app.route("/api/v1/get_data/<projectId>", methods=['GET'])
 def create_products_data(projectId) -> pd.DataFrame:
-    df = pd.read_csv(f"/data/{projectId}/filename.csv")
+    df = pd.read_csv(f"data/{projectId}/filename.csv")
     df = df[["seller", "image_path", "products", "animal_name_match"]]
     df.rename(columns={"animal_name_match": "animalName"}, inplace=True)
     data = df.to_json(orient='records')
@@ -420,8 +422,7 @@ def create_database():
     filename = file.filename
     # filepath = os.path.join(project_id, filename)
 
-    project_dir = os.path.join(project_id)
-    print(project_dir)
+    project_dir = os.path.join("data", project_id)
     if not os.path.exists(project_dir):
         os.makedirs(project_dir)
     file_path = os.path.join(project_dir, filename)
@@ -483,4 +484,4 @@ if __name__ == "__main__":
         app.run(debug=False, host="0.0.0.0")
         # socketio.run(app, debug=False, host="0.0.0.0", port=5000)
     else:
-        app.run(app, debug=True, host="127.0.0.1")
+        app.run(debug=True, host="127.0.0.1")
