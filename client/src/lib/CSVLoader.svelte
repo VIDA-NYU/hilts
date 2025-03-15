@@ -122,8 +122,8 @@
 
   async function startTraining(){
      try {
-      const Trainingresponse = await api.startTraining({ projectId: projectId, labeling: ""});
-      const processID = Trainingresponse.process_id;
+      const trainingResponse = await api.startTraining({ projectId: projectId, labeling: ""});
+      const processID = trainingResponse.process_id;
       processId.set(processID);
     } catch (error) {
       const responseMessage = `Error starting model training: ${error.message}`;

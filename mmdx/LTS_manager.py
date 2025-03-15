@@ -118,7 +118,7 @@ class LTSManager:
 
         # Save the process ID to a file # DO I NEED THIS?
         process_path = f"data/{self.project_id}/{self.process.pid}"
-        os.mkdir(process_path, exist_ok=True)
+        os.makedirs(process_path, exist_ok=True)
         with open(f"{process_path}/training_process_id.txt", "w") as f:
             f.write(f"{self.project_id}: {self.process.pid}\n")
 
@@ -147,8 +147,9 @@ class LTSManager:
             }
 
         labels = self.get_llm_labels(project_path)
-        epochs = self.get_epoch_logs(project_path)
         metrics = self.get_metrics(project_path)
+
+        epochs = self.get_epoch_logs(process_path)
 
         status["lts_status"] = self.process.is_alive()
         status["lts_state"] = self.get_LTS_state(process_path)
@@ -212,9 +213,9 @@ class LTSManager:
 
 
     @staticmethod
-    def get_epoch_logs(project_path):
+    def get_epoch_logs(process_path):
         # List all files in the directory
-        log_path = project_path+"log"
+        log_path = process_path+"log"
         files = [f for f in os.listdir(log_path) if f.endswith('.txt') and 'epoch_' in f]
 
         files.sort(key=lambda f: float(f.split('_')[1].split('.')[0]))  # Sort by the epoch number (e.g., 1.0, 2.0, etc.)
