@@ -5,10 +5,12 @@ import json
 from .utils import load_and_save_csv
 from .config import update_config
 
-def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, id):
-    training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename)
+def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, id, state_path):
+    training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename, state_path)
     ## Generate labels
     if labeling != "file":
+        with open(state_path + "status.txt", "w") as f:
+            f.write("LLM labeling")
         training_data = labeler.generate_inference_data(training_data, 'clean_title')
         training_data["answer"] = training_data.apply(lambda x: labeler.predict_animal_product(x), axis=1)
         training_data["answer"] = training_data["answer"].str.strip()
@@ -31,9 +33,12 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
 
     ## FINE TUNE MODEL
     #get base model
+    with open(state_path + "status.txt", "w") as f:
+        f.write("training")
+
     model_name, baseline = get_model_and_baseline(trainer, metric, baseline)
 
-    results, _ = trainer.train_data(training_data, still_unbalenced)
+    results, _ = trainer.train_data(training_data, still_unbalenced, state_path)
 
     improved = (results[f"eval_{metric}"] - baseline) > 0
 

@@ -43,7 +43,9 @@ class ThompsonSampler:
         np.savetxt(f'data/{self.project_id}/wins.txt', self.wins)
         np.savetxt(f'data/{self.project_id}/losses.txt', self.losses)
 
-    def get_sample_data(self, df, sample_size, filter_label: bool, trainer: Any, labeling: str, filename: str):
+    def get_sample_data(self, df, sample_size, filter_label: bool, trainer: Any, labeling: str, filename: str, state_path: str):
+        with open(state_path + "status.txt", "w") as f:
+            f.write("Sampling")
 
         def select_data(df, chosen_bandit, sample_size):
             filtered_df = df[df['label_cluster'] == chosen_bandit].sample(min(sample_size, len(df[df['label_cluster'] == chosen_bandit])))
@@ -59,7 +61,9 @@ class ThompsonSampler:
         df = df[~df['id'].isin(self.selected_ids)]
 
         data = pd.DataFrame()
+        count = 0
         while data.empty:
+            count +=1
             chosen_bandit = self.choose_bandit()
             print(f"Chosen bandit {chosen_bandit}")
             bandit_df = df[df["label_cluster"] == chosen_bandit]
@@ -67,6 +71,8 @@ class ThompsonSampler:
             if not bandit_df.empty:
                 if filter_label:
                     if trainer.get_clf():
+                        with open(state_path + "status.txt", "w") as f:
+                            f.write("Inference")
                         bandit_df["predicted_label"] = trainer.get_inference(bandit_df)
                         print("inference results")
                         print(bandit_df["predicted_label"].value_counts())
@@ -75,10 +81,12 @@ class ThompsonSampler:
                         print(bandit_df["predicted_label"].value_counts())
                         pos = bandit_df[bandit_df["predicted_label"] == 1]
                         neg = bandit_df[bandit_df["predicted_label"] == 0]
-                        if pos.empty:
+                        if pos.empty and count <= (self.n_bandits)/2:
                             print("no positive data available")
                             data=pos
-                        else:
+                        elif pos.empty and count > (self.n_bandits)/2:
+                            data = select_data(neg, chosen_bandit, int(sample_size))
+                        elif not pos.empty:
                             n_sample = sample_size/2
                             data = select_data(pos, chosen_bandit, int(n_sample))
                             neg_data = select_data(neg, chosen_bandit, int(sample_size-len(data)))

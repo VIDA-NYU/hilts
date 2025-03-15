@@ -1,7 +1,7 @@
-<script>
+<script lang=ts>
   import * as api from "./Api";
   import Modal from "./Modal.svelte";
-  import { projectName } from "./stores";
+  import { projectName, processId } from "./stores";
   export let dataToCSV = [];
   import { navigate } from "svelte-routing";
 
@@ -33,10 +33,13 @@
   let bugetValue = 1000;
   let cluster = "lda"
   let projectId = "";
+  let processID = 0;
 
   projectName.subscribe((name) => {
     projectId = name;
   });
+
+
 
   let showModal = false; // Reactive variable to control modal visibility
   let argsDict = {};
@@ -113,6 +116,19 @@
       return projectId;
     });
     return projectId;
+  }
+
+
+
+  async function startTraining(){
+     try {
+      const Trainingresponse = await api.startTraining({ projectId: projectId, labeling: ""});
+      const processID = Trainingresponse.process_id;
+      processId.set(processID);
+    } catch (error) {
+      const responseMessage = `Error starting model training: ${error.message}`;
+    }
+    navigate("/result?q=")
   }
 
 
@@ -195,7 +211,7 @@
         Update Settings
       </button>
       <div class="pt-2">
-        <button class="btn btn-success" on:click={() => navigate("/result?q=")}>
+        <button class="btn btn-success" on:click={startTraining}>
           <!-- startLTSGenerator -->
           <span class="fa fa-cogs mr-2" />
           Start Project

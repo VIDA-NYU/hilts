@@ -97,15 +97,15 @@ class BertFineTuner:
             'f1': f1
         }
 
-    def train_data(self, df, still_unbalenced):
-        early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir="log", project_id=self.project_id)
+    def train_data(self, df, still_unbalenced, state_path):
+        early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir=state_path, project_id=self.project_id)
 
         tokenized_data, data_collator = self.create_dataset(df, self.test_data)
 
         import os
 
         # Ensure the directories exist
-        log_dir_path = f"data/{self.project_id}/log"
+        log_dir_path = f"{state_path}log"
 
         # Create the directory if it doesn't exist
         os.makedirs(log_dir_path, exist_ok=True)
@@ -131,6 +131,7 @@ class BertFineTuner:
         )
         if still_unbalenced:
             print(f"using modified loss function")
+            print(f"using device: {self.device}")
             # Create a Trainer
             trainer = MyTrainer(
                 model=self.model,
@@ -145,8 +146,6 @@ class BertFineTuner:
             # Fine-tune the model
             trainer.train()
             results = trainer.evaluate()
-            print(results)
-
             self.trainer = trainer
 
             return results, self.trainer
@@ -165,7 +164,6 @@ class BertFineTuner:
             # Fine-tune the model
             trainer.train()
             results = trainer.evaluate()
-            print(results)
 
             self.trainer = trainer
 
@@ -286,7 +284,7 @@ class EarlyStoppingCallback(TrainerCallback):
                     if self.wait >= self.patience:
                         control.should_training_stop = True
                 # Save logs
-                if self.log_dir:
-                    with open(f"data/{self.project_id}/{self.log_dir}/epoch_{state.epoch}.txt", "w") as f:
-                        for log in state.log_history:
-                            f.write(f"{log}\n")
+            if self.log_dir:
+                with open(f"{self.log_dir}log/epoch_{state.epoch}.txt", "w") as f:
+                    for log in state.log_history:
+                        f.write(f"{log}\n")

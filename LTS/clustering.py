@@ -32,7 +32,7 @@ class TextClustering:
         n_clusters = self.n_cluster
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         kmeans.fit(self.X)
-        self.data['label_cluster'] = kmeans.labels_
+        self.data['label_cluster'] = kmeans.labels_.astype(int)
         self.save_csv(self.filename, self.data)
         print(f"KMeans clustering complete with {n_clusters} clusters.")
         return self.data
@@ -44,7 +44,7 @@ class TextClustering:
         n_clusters = self.n_cluster
         agglo = AgglomerativeClustering(n_clusters=n_clusters)
         agglo_labels = agglo.fit_predict(self.X.toarray())  # AgglomerativeClustering needs dense array input
-        self.data['label_cluster'] = agglo_labels
+        self.data['label_cluster'] = int(agglo_labels)
         self.save_csv(self.filename, self.data)
         print(f"Agglomerative Clustering complete with {n_clusters} clusters.")
         return self.data
@@ -55,7 +55,7 @@ class TextClustering:
         """
         gmm = GaussianMixture(n_components=self.n_cluster, random_state=42)
         gmm_labels = gmm.fit_predict(self.X.toarray())  # GMM also works better with dense arrays
-        self.data['label_cluster'] = gmm_labels
+        self.data['label_cluster'] =int(gmm_labels)
         self.save_csv(self.filename, self.data)
         print(f"GMM clustering complete with {self.n_cluster} clusters.")
         return self.data
@@ -76,7 +76,7 @@ class TextClustering:
         from .lda import LDATopicModel  # Import here to avoid circular imports
         lda_topic_model = LDATopicModel(num_topics=int(self.n_cluster))
         topics = lda_topic_model.fit_transform(self.data[self.text_column].to_list())
-        self.data["label_cluster"] = topics
+        self.data["label_cluster"] = int(topics)
         self.save_csv(self.filename, self.data)
         print("LDA created")
         return self.data

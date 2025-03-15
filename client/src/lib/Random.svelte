@@ -4,6 +4,7 @@
   import ImageCard from "./ImageCard.svelte";
   import LabelAll from "./LabelAll.svelte";
   import { selectedDataStore, projectName } from "./stores";
+  import { navigate } from "svelte-routing";
 
   let result: Promise<Hits> | null = null;
   let limit: string = "16";

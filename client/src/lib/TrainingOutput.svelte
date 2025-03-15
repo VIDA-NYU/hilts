@@ -3,42 +3,41 @@
   import { onMount, onDestroy} from "svelte";
   import { io } from "socket.io-client";
   import * as d3 from "d3";
-  import { projectName } from "./stores"
+  import { projectName, processId } from "./stores"
   import { navigate } from "svelte-routing";
   // import { socket, initializeSocket } from './stores';
   // import { get } from 'svelte/store';
 
 
   let responseMessage;
+  let status = {
+    lts_status: "",
+    lts_state: "",
+    stats: {
+      llm_labels: [],
+      epochs: [],
+      training_metrics: []
+    }
+  };
+  let step;
   let chartData = {
     precision: [],
     recall: [],
     f1_score: [],
     accuracy: [],
   };
-  let projectId = ""
+
+  let projectId = "";
+
+  let processID = 0;
 
   projectName.subscribe((name) => {
     projectId = name;
   });
 
-  // let socketURL;
-
-  // if (window.location.port === "80") {
-  //     socketURL = `${window.location.hostname}`;  // e.g., ws://localhost:5000$ {window.location.port}
-  // } else {
-  //     socketURL = `${window.location.hostname}:${window.location.port}`;  // e.g., wss://myapp.example.com
-  // }
-
-  // if (window.location.protocol === 'https:'){
-  //   socketURL = `wss://${socketURL}`;
-  // } else {
-  //   socketURL = `ws://${socketURL}`;
-  // }
-
-  // console.log("socketURL: ", socketURL)
-
-  // const socket = io(socketURL, { autoConnect: true }) //, transports: ['websocket', 'polling']});
+  processId.subscribe((ID) => {
+    processID = ID;
+  });
 
   let svg;
   const width = 600;
@@ -170,21 +169,23 @@
       .text((d) => d.label);
   };
 
-  async function getData() {
-    const data = await api.getResults(projectId); // Your API call
-    if (data && data.step && data.step !== null) {
-      updateChartData(data);
-      steps_training.push(data.step);  // Add the step label
-      createChart(); // Re-create the chart with updated data
+  async function getStatus() {
+    status = await api.getStatus(projectId, processID);
+    console.log(status);
+    step = status["stats"]["training_metrics"]["step"];
+    if (status && step && step !== null && !steps_training.includes(step)) {
+          updateChartData(status["stats"]["training_metrics"]);
+          steps_training.push(step);  // Add the step label
+          createChart(); // Re-create the chart with updated data
     }
   }
 
   let interval;
 
   onMount(() => {
-    getData();
+    getStatus();
     interval = setInterval(() => {
-      getData();
+      getStatus();
     }, 60000);
   });
 
@@ -194,25 +195,25 @@
 
   async function interference() {
     try {
-      responseMessage = await api.stopTraining({ projectId: projectId, labeling: ""});
+      responseMessage = await api.stopTraining({ projectId: projectId, processID: processID});
     } catch (error) {
       responseMessage = `Error stopping model training: ${error.message}`;
     }
 
-    // console.log("finish")
-    // socket.emit("stop_training", { projectId: projectId, labeling: ""});
+    // navigate("/search/random?q=");
+
   }
 
-  async function startTraining(){
-    try {
-      responseMessage = await api.startTraining({ projectId: projectId, labeling: ""});
-    } catch (error) {
-      responseMessage = `Error starting model training: ${error.message}`;
-    }
+  // async function startTraining(){
+  //   try {
+  //     responseMessage = await api.startTraining({ projectId: projectId, labeling: ""});
+  //   } catch (error) {
+  //     responseMessage = `Error starting model training: ${error.message}`;
+  //   }
 
-    // console.log("starrt")
-    // socket.emit("start training", { projectId: projectId , labeling: ""});
-  }
+  //   // console.log("starrt")
+  //   // socket.emit("start training", { projectId: projectId , labeling: ""});
+  // }
 
   async function restartTraining() {
     try {
@@ -229,7 +230,7 @@
     $: {
       // console.log(location);
       // this block is reactively triggered whenever the location variable (which contains the URL) changes
-      startTraining();
+      // startTraining();
     }
 </script>
 
@@ -252,7 +253,7 @@
   <!-- Button to check interference (or any API-related logic) -->
   <button
     class="btn danger"
-    on:click={() => { interference; navigate("/search/random?q="); }}
+    on:click={() => { interference }}
     disabled={isTrainingComplete}
   >
     Stop and Fix Labels

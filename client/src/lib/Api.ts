@@ -17,6 +17,11 @@ export interface Hit {
   labels_types_dict: { [key: string]: LabelType };
 }
 
+export interface StartTrainingResponse {
+  message: string;
+  process_id: number;
+}
+
 export async function keywordSearch(
   queryStr: string,
   limit: number,
@@ -178,8 +183,8 @@ export async function getData(projectId: string) {
 
   }
 
-export async function getResults(projectId: string) {
-  const url = `${API_URL}/get_results/${encodeURIComponent(projectId)}`;
+export async function getStatus(projectId: string, processId: number) {
+  const url = `${API_URL}/get_status/${encodeURIComponent(projectId)}?processId=${encodeURIComponent(processId)}`;
   try {
     const response = await fetch(url, {
       method: "GET",
@@ -202,11 +207,10 @@ export async function getResults(projectId: string) {
 
 export async function startTraining(
   argsDict: object
-) {
+): Promise<StartTrainingResponse> {
   const url = `${API_URL}/start_training`;
   let responseMessage = "";
   console.log(url);
-
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -217,24 +221,28 @@ export async function startTraining(
       const responseData = await response.json();
       responseMessage = "Model training started successfully";
       console.log("Model training started:", responseData);
+      return {
+        message: responseData.message,
+        process_id: responseData.process_id
+      };
     } else {
       responseMessage = "Failed to start training";
       console.error("Failed to start training:", response.statusText);
+      return { message: responseMessage, process_id: -1 };
     }
   } catch (error) {
     responseMessage = "Error start training";
     console.error("Error start training:", error);
+    return { message: responseMessage, process_id: -1 };
   }
-  return responseMessage;
 }
 
 export async function restartTraining(
   argsDict: object
-) {
+): Promise<StartTrainingResponse> {
   const url = `${API_URL}/restart_training`;
   let responseMessage = "";
   console.log(url);
-
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -245,15 +253,20 @@ export async function restartTraining(
       const responseData = await response.json();
       responseMessage = "Model training started successfully";
       console.log("Model training started:", responseData);
+      return {
+        message: responseData.message,
+        process_id: responseData.process_id
+      };
     } else {
       responseMessage = "Failed to start training";
       console.error("Failed to start training:", response.statusText);
+      return { message: responseMessage, process_id: -1 };
     }
   } catch (error) {
     responseMessage = "Error start training";
     console.error("Error start training:", error);
+    return { message: responseMessage, process_id: -1 };
   }
-  return responseMessage;
 }
 
 export async function stopTraining(
