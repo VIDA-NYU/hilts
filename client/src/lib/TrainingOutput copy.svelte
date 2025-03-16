@@ -166,13 +166,11 @@
   async function getStatus() {
     status = await api.getStatus();
     console.log(status);
-    if (Object.keys(status).length !== 0) {
-      step = status["stats"]["training_metrics"]["step"];
-      if (status && step && step !== null && !steps_training.includes(step)) {
-            updateChartData(status["stats"]["training_metrics"]);
-            steps_training.push(step);  // Add the step label
-            createChart(); // Re-create the chart with updated data
-      }
+    step = status["stats"]["training_metrics"]["step"];
+    if (status && step && step !== null && !steps_training.includes(step)) {
+          updateChartData(status["stats"]["training_metrics"]);
+          steps_training.push(step);  // Add the step label
+          createChart(); // Re-create the chart with updated data
     }
   }
 
@@ -211,54 +209,129 @@
   export let location: Location;
     $: {
     }
-
 </script>
 
-<div class="container">
-  <!-- Training Status -->
-  <div class="status">
-      <span>Training Status:</span>
-      <span class={status.lts_status === 'True' ? 'running' : 'not-running'}>
-          {status.lts_status}
-      </span>
-  </div>
+<div class="container-fluid px-5">
+  <h1>LTS</h1>
+  <h3>Current Project ID: {projectId}</h3>
+  <!-- Button to start training -->
+  <!-- <button
+    class="btn btn-success"
+    on:click={startTraining}
+    disabled={isTrainingComplete}
+  >
+    Start Training
+  </button> -->
+  <svg id="chart"></svg>
 
-  <!-- Label Counts -->
-  <div class="label-counts">
-      <div>
-          <span>Label 1: {status.stats.llm_labels}</span>
-      </div>
-      <div>
-          <span>Label 0: {status.stats.llm_labels}</span>
-      </div>
-  </div>
-
-  <!-- Epoch Logs -->
-  <div class="log-epoch">
-      <h3>Epoch Logs:</h3>
-      <ul>
-          {#each status.stats.epochs as log}
-              <li>{log}</li>
-          {/each}
-      </ul>
-  </div>
-
-  <!-- Metrics (Training Stats) -->
-  <div class="metrics">
-      <div>
-          <h4>Training Metrics</h4>
-          {#each status.stats.training_metrics as metric}
-              <p>{metric.metric_name}: {metric.value}</p>
-          {/each}
-      </div>
-      <div>
-          <h4>LLM Labels</h4>
-          <p>Label 1 Count: {status.stats.llm_labels[0]}</p>
-          <p>Label 2 Count: {status.stats.llm_labels[1]}</p>
-      </div>
-  </div>
+  <!-- {#if isTrainingComplete}
+      <p><strong>Training is complete!</strong></p>
+    {/if} -->
+  <!-- Button to check interference (or any API-related logic) -->
+  <button
+    class="btn danger"
+    on:click={() => { interference }}
+    disabled={isTrainingComplete}
+  >
+    Stop and Fix Labels
+  </button>
+  <button
+    class="btn btn-success"
+    on:click={restartTraining}
+    disabled={isTrainingComplete}
+  >
+    Restart Training
+  </button>
 </div>
+<!-- <style>
+  .chart-container {
+      width: 100%;
+      height: 400px;
+    }
+  .danger {background-color: #f44336;}
+  .container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
 
+  .btn {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .btn-danger {
+    background-color: #d9534f;
+  }
+
+  .cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  .card {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 300px;
+    transition: all 0.3s ease;
+  }
+
+  .card h3 {
+    margin-bottom: 10px;
+  }
+
+  .progress-bar {
+    height: 5px;
+    background-color: #ccc;
+    border-radius: 5px;
+    margin-bottom: 15px;
+  }
+
+  .metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .metric {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .metric label {
+    font-weight: bold;
+  }
+
+  .metric span {
+    padding: 5px;
+    border-radius: 5px;
+  }
+
+  .green {
+    color: green;
+    background-color: #d4edda;
+  }
+
+  .orange {
+    color: orange;
+    background-color: #ffeeba;
+  }
+
+  .red {
+    color: red;
+    background-color: #f8d7da;
+  }
+</style> -->
 
 <style>
   .danger {
@@ -270,92 +343,4 @@
   h3{
     color: #636363
   }
-
-    /* Basic styling */
-    .container {
-        width: 80%;
-        margin: auto;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-    }
-
-    .status {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding: 10px;
-        background-color: #eef2f7;
-        border-radius: 8px;
-    }
-
-    .status span {
-        font-size: 18px;
-    }
-
-    .status .running {
-        color: green;
-        font-weight: bold;
-    }
-
-    .status .not-running {
-        color: red;
-        font-weight: bold;
-    }
-
-    .log-epoch {
-        margin-bottom: 20px;
-    }
-
-    .log-epoch ul {
-        list-style-type: none;
-        padding: 0;
-    }
-
-    .log-epoch li {
-        background-color: #f9fafb;
-        padding: 10px;
-        border-radius: 4px;
-        margin: 5px 0;
-        font-size: 14px;
-        word-wrap: break-word;
-    }
-
-    .label-counts {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 20px;
-        padding: 10px;
-        background-color: #eef2f7;
-        border-radius: 8px;
-    }
-
-    .label-counts div {
-        text-align: center;
-    }
-
-    .label-counts span {
-        font-size: 18px;
-        font-weight: bold;
-    }
-
-    .metrics {
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .metrics div {
-        flex: 1;
-        background-color: #eef2f7;
-        padding: 20px;
-        border-radius: 8px;
-        margin: 0 10px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .metrics div p {
-        margin: 5px 0;
-    }
 </style>

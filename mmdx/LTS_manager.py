@@ -1,11 +1,11 @@
 import multiprocessing
 import os
-import re
 import pandas as pd
 import numpy as np
 from LTS.main import initialize_LTS
 from LTS.lts_processing import LTS
 import json
+import shutil
 
 
 class LTSManager:
@@ -22,6 +22,9 @@ class LTSManager:
         metrics_path = f"data/{project_id}/metrics.json"
         process_id = self.process.pid
         state_path = f"data/{project_id}/{process_id}/"
+        stop_path = f"data/{project_id}/{process_id}/stop.txt"
+
+        print(f"processid: {process_id}")
 
         args, sampler, data, trainer, labeler = initialize_LTS(project_id)
 
@@ -33,66 +36,66 @@ class LTSManager:
         if budget == "trainingSize":
             loops = int(budget_value/args.get("sample_size"))
             for idx in range(loops):
-                process_path = f"data/{project_id}/{process_id}/stop.txt"
-                if os.path.exists(process_path):
+                if os.path.exists(stop_path):
+                    print(f"Removing Stop file {stop_path}")
+                    os.remove(stop_path)
                     print("Training stopped!")
-                    os.remove(process_path)
-                    self.process.terminate()
-                    break
+                    return # End of LTS process
                 if idx == 0 and label_hilts =="file":
                     label = label_hilts
                 else:
                     label = args.get("labeling")
                 res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, project_id, state_path)
-                result = {
-                        "step": [idx],
-                        "precision": [res["eval_precision"]],
-                        "recall": [res["eval_recall"]],
-                        "f1_score": [res["eval_f1"]],
-                        "accuracy": [res["eval_accuracy"]]
-                    }
-                if not os.path.exists(metrics_path):
-                    with open(metrics_path, "w") as json_file:
-                        json.dump(result, json_file, indent=4)
+                if res:
+                    result = {
+                            "step": [idx],
+                            "precision": [res["eval_precision"]],
+                            "recall": [res["eval_recall"]],
+                            "f1_score": [res["eval_f1"]],
+                            "accuracy": [res["eval_accuracy"]]
+                        }
+                    if not os.path.exists(metrics_path):
+                        with open(metrics_path, "w") as json_file:
+                            json.dump(result, json_file, indent=4)
+                    else:
+                        with open(metrics_path, "r") as json_file:
+                            result_json = json.load(json_file)
+                        result_json["precision"].append(res["eval_precision"])
+                        result_json["recall"].append(res["eval_recall"])
+                        result_json["f1_score"].append(res["eval_f1"])
+                        result_json["accuracy"].append(res["eval_accuracy"])
+                        result_json["step"].append(idx)
+                        with open(metrics_path, "w") as json_file:
+                            json.dump(result_json, json_file, indent=4)
                 else:
-                    with open(metrics_path, "r") as json_file:
-                        result_json = json.load(json_file)
-                    result_json["precision"].append(res["eval_precision"])
-                    result_json["recall"].append(res["eval_recall"])
-                    result_json["f1_score"].append(res["eval_f1"])
-                    result_json["accuracy"].append(res["eval_accuracy"])
-                    result_json["step"].append(idx)
-                    with open(metrics_path, "w") as json_file:
-                        json.dump(result_json, json_file, indent=4)
+                    if os.path.exists(stop_path):
+                        print(f"Removing Stop file {stop_path}")
+                        os.remove(stop_path)
+                    print("LTS Finished!")
+                    return # End of LTS process
 
-                # data = pd.read_csv(f"data/{project_id}/current_sample_training.csv")
-                # data["relevant"] = np.where(data["label"]==1, "animal origin", "not animal origin")
-                # global db
-                # for _, row in data.iterrows():
-                #     db.add_label(image_path=row["image_path"], label=row["relevant"], table="relevant")
-                # time.sleep(120)
-
-        elif budget=="metric":
-            generate = True
-            idx = 0
-            while generate:
-                process_path = f"data/{project_id}/{os.getpid()}/stop.txt"
-                if os.path.exists(process_path):
-                    print("Training stopped!")
-                    os.remove(process_path)
-                    print("Training stopped!")
-                    break
-                result = LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), args.get("labeling"), idx, project_id)
-                if result[f'eval_{args.get("metric")}'] >= budget_value:
-                    generate = False
-                idx+=1
-                result = {
-                    "step": idx,
-                    "precision": result["eval_precision"],
-                    "recall": result["eval_recall"],
-                    "f1_score": result["eval_f1"],
-                    "accuracy": result["eval_accuracy"]
-                }
+        # TODO
+        # elif budget=="metric":
+        #     generate = True
+        #     idx = 0
+        #     while generate:
+        #         process_path = f"data/{project_id}/{os.getpid()}/stop.txt"
+        #         if os.path.exists(process_path):
+        #             print("Training stopped!")
+        #             os.remove(process_path)
+        #             print("Training stopped!")
+        #             break
+        #         result = LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), args.get("labeling"), idx, project_id)
+        #         if result[f'eval_{args.get("metric")}'] >= budget_value:
+        #             generate = False
+        #         idx+=1
+        #         result = {
+        #             "step": idx,
+        #             "precision": result["eval_precision"],
+        #             "recall": result["eval_recall"],
+        #             "f1_score": result["eval_f1"],
+        #             "accuracy": result["eval_accuracy"]
+        #         }
                 # training_results.append(result)
 
                 # Emit the training result after each step
@@ -115,6 +118,8 @@ class LTSManager:
         self.process = multiprocessing.Process(target=self.train_model, args=(label_hits,))
         self.process.start()
         self.status = self.process.is_alive()
+        self.process_id = self.process.pid
+        print(f"Training process started with PID: {self.process_id}")
 
         # Save the process ID to a file # DO I NEED THIS?
         process_path = f"data/{self.project_id}/{self.process.pid}"
@@ -122,29 +127,21 @@ class LTSManager:
         with open(f"{process_path}/training_process_id.txt", "w") as f:
             f.write(f"{self.project_id}: {self.process.pid}\n")
 
-        print(f"Training process started with PID: {self.process.pid}")
-
         # Return the training process
         return self.process
 
-
-    def get_status(self, processId):
+    def get_status(self):
         project_path = f"data/{self.project_id}/"
-        process_path = f"data/{self.project_id}/{processId}/"
-
-        if os.path.exists(process_path + "status.json"):
-            with open(process_path + "status.json", "r") as json_file:
-                status = json.load(json_file)
-        else:
-            status = {
-                "lts_status": "",
-                "lts_state": "",
-                "stats": {
-                    "llm_labels": [],
-                    "epochs": [],
-                    "training_metrics": []
-                }
+        process_path = f"data/{self.project_id}/{self.process_id}/"
+        status = {
+            "lts_status": "",
+            "lts_state": "",
+            "stats": {
+                "llm_labels": [],
+                "epochs": [],
+                "training_metrics": []
             }
+        }
 
         labels = self.get_llm_labels(project_path)
         metrics = self.get_metrics(project_path)
@@ -161,8 +158,8 @@ class LTSManager:
         if metrics:
             status["stats"]["training_metrics"].append(metrics)
 
-        with open(process_path + "status.json", "w") as json_file:
-            json.dump(status, json_file, indent=4)
+        if not status["lts_status"]:
+            self.remove_dirc(process_path) ## remove process folder after process is done
 
         return status
 
@@ -175,9 +172,9 @@ class LTSManager:
 
     @staticmethod
     def get_LTS_state(state_path):
-        if os.path.exists(state_path + "state.json"):
-            with open(state_path, "r") as json_file:
-                state = json.load(json_file)
+        if os.path.exists(state_path + "state.txt"):
+            with open(state_path, "r") as file:
+                state = file.read()
                 return state
         else:
             print("No state available")
@@ -216,24 +213,29 @@ class LTSManager:
     def get_epoch_logs(process_path):
         # List all files in the directory
         log_path = process_path+"log"
-        files = [f for f in os.listdir(log_path) if f.endswith('.txt') and 'epoch_' in f]
+        if os.path.exists(log_path):
+            files = [f for f in os.listdir(log_path) if f.endswith('.txt') and 'epoch_' in f]
+            if len(files) >0:
+                files.sort(key=lambda f: float(f.split('_')[1].split('.')[0]))  # Sort by the epoch number (e.g., 1.0, 2.0, etc.)
 
-        files.sort(key=lambda f: float(f.split('_')[1].split('.')[0]))  # Sort by the epoch number (e.g., 1.0, 2.0, etc.)
+                if len(files) > 1:
+                    previous_file = files[-2]  # The second-to-last file
+                else:
+                    return None  # If there are not enough files to get the previous one
 
-        if len(files) > 1:
-            previous_file = files[-2]  # The second-to-last file
+                previous_file_path = os.path.join(log_path, previous_file)
+
+                with open(previous_file_path, 'r') as file:
+                    file_content = file.read()
+
+                try:
+                    epoch_logs = json.loads(file_content)  # Parse the content as JSON
+                    return epoch_logs
+                except json.JSONDecodeError as e:
+                    print(f"Error decoding JSON from {previous_file}: {e}")
+                    return None
         else:
-            return None  # If there are not enough files to get the previous one
-
-        previous_file_path = os.path.join(log_path, previous_file)
-        with open(previous_file_path, 'r') as file:
-            file_content = file.read()
-
-        try:
-            epoch_logs = json.loads(file_content)  # Parse the content as JSON
-            return epoch_logs
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from {previous_file}: {e}")
+            print(f"Epoch logs file does not exists {log_path}")
             return None
 
 
@@ -258,6 +260,22 @@ class LTSManager:
     #         return "not running"
     #     except TypeError:
     #         return "not running"
+
+    @staticmethod
+    def remove_dirc(path):
+        # Check if directory exists
+        if os.path.exists(path):
+            # Iterate through the directory and remove files/subdirectories
+            for filename in os.listdir(path):
+                file_path = os.path.join(path, filename)
+                if os.path.isdir(file_path):
+                    shutil.rmtree(file_path)  # Remove subdirectory
+                else:
+                    os.remove(file_path)  # Remove file
+
+            # Now remove the empty directory
+            os.rmdir(path)
+
 
 
 

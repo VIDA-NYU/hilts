@@ -69,6 +69,8 @@ def load_images_from_minio(
 def get_image_files(data_path: str, S3_Client: S3Client):
     if CSV_FILENAME:
         print("Getting images from CSV file")
+        print(DEFAULT_CSV_BUCKET)
+        print(CSV_FILENAME)
         csv_data = S3_Client.get_obj(DEFAULT_CSV_BUCKET, CSV_FILENAME)
         df = pd.read_csv(BytesIO(csv_data.read()))
         image_files = df["image_path"].to_list()

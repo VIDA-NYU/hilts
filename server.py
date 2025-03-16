@@ -55,7 +55,7 @@ def start_training():
     training_process = ltsmanager.start_training(label_hilts)
     return jsonify({
         'message': 'Training started!',
-        'process_id': training_process.pid
+        # 'process_id': training_process.pid
     })
 
 
@@ -71,7 +71,7 @@ def start_retraining():
     training_process = ltsmanager.start_training(label_hilts)
     return jsonify({
         'message': 'Training started!',
-        'process_id': training_process.pid
+        # 'process_id': training_process.pid
     })
 
 @app.route("/api/v1/stop_training", methods=['POST'])
@@ -82,12 +82,15 @@ def stop_training():
     ltsmanager.stop_LTS(process_id)
     return {'message': 'LTS Stop message sent'}
 
-@app.route("/api/v1/get_status/<projectId>", methods=['GET'])
-def get_training_results(projectId) -> pd.DataFrame:
-    process_id = request.args.get('processId')
+@app.route("/api/v1/get_status/", methods=['GET'])
+def get_training_results() -> pd.DataFrame:
     # manager = LTSManager(projectId) ## should make it global?
-    status = ltsmanager.get_status(process_id)
-    return status
+    try:
+        status = ltsmanager.get_status()
+        return status
+    except NameError:
+        print("No manager created")
+        return {}
 
 # Path for all the static files (compiled JS/CSS, etc.)
 @app.route("/<path:path>")

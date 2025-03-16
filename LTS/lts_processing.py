@@ -7,9 +7,12 @@ from .config import update_config
 
 def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, id, state_path):
     training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename, state_path)
+    if training_data.empty:
+        return None
+
     ## Generate labels
     if labeling != "file":
-        with open(state_path + "status.txt", "w") as f:
+        with open(state_path + "state.txt", "w") as f:
             f.write("LLM labeling")
         training_data = labeler.generate_inference_data(training_data, 'clean_title')
         training_data["answer"] = training_data.apply(lambda x: labeler.predict_animal_product(x), axis=1)
@@ -33,7 +36,7 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
 
     ## FINE TUNE MODEL
     #get base model
-    with open(state_path + "status.txt", "w") as f:
+    with open(state_path + "state.txt", "w") as f:
         f.write("training")
 
     model_name, baseline = get_model_and_baseline(trainer, metric, baseline)

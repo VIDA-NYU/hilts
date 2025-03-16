@@ -44,7 +44,7 @@ class ThompsonSampler:
         np.savetxt(f'data/{self.project_id}/losses.txt', self.losses)
 
     def get_sample_data(self, df, sample_size, filter_label: bool, trainer: Any, labeling: str, filename: str, state_path: str):
-        with open(state_path + "status.txt", "w") as f:
+        with open(state_path + "state.txt", "w") as f:
             f.write("Sampling")
 
         def select_data(df, chosen_bandit, sample_size):
@@ -66,12 +66,13 @@ class ThompsonSampler:
             count +=1
             chosen_bandit = self.choose_bandit()
             print(f"Chosen bandit {chosen_bandit}")
+            print(df["label_cluster"].value_counts())
             bandit_df = df[df["label_cluster"] == chosen_bandit]
             print(f"length of bendit {len(bandit_df)}")
             if not bandit_df.empty:
                 if filter_label:
                     if trainer.get_clf():
-                        with open(state_path + "status.txt", "w") as f:
+                        with open(state_path + "state.txt", "w") as f:
                             f.write("Inference")
                         bandit_df["predicted_label"] = trainer.get_inference(bandit_df)
                         print("inference results")
@@ -95,6 +96,8 @@ class ThompsonSampler:
                         data = select_data(bandit_df, chosen_bandit, sample_size)
                 else:
                     data = select_data(bandit_df, chosen_bandit, sample_size)
+            if count == self.n_bandits:
+                return data, chosen_bandit
 
 
         # Add the IDs of sampled data to the selected_ids set

@@ -1,7 +1,7 @@
 <script lang=ts>
   import * as api from "./Api";
   import Modal from "./Modal.svelte";
-  import { projectName, processId } from "./stores";
+  import { projectName } from "./stores";
   export let dataToCSV = [];
   import { navigate } from "svelte-routing";
 
@@ -33,7 +33,6 @@
   let bugetValue = 1000;
   let cluster = "lda"
   let projectId = "";
-  let processID = 0;
 
   projectName.subscribe((name) => {
     projectId = name;
@@ -123,8 +122,6 @@
   async function startTraining(){
      try {
       const trainingResponse = await api.startTraining({ projectId: projectId, labeling: ""});
-      const processID = trainingResponse.process_id;
-      processId.set(processID);
     } catch (error) {
       const responseMessage = `Error starting model training: ${error.message}`;
     }
