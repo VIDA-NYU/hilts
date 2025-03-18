@@ -138,7 +138,7 @@ class LTSManager:
             "lts_state": "",
             "stats": {
                 "llm_labels": [],
-                "epochs": [],
+                "epochs": {},
                 "training_metrics": []
             }
         }
@@ -154,7 +154,7 @@ class LTSManager:
         if labels:
             status["stats"]["llm_labels"].append(labels)
         if epochs:
-            status["stats"]["epochs"] = [epochs]
+            status["stats"]["epochs"] = epochs
         if metrics:
             status["stats"]["training_metrics"].append(metrics)
 
@@ -173,7 +173,7 @@ class LTSManager:
     @staticmethod
     def get_LTS_state(state_path):
         if os.path.exists(state_path + "state.txt"):
-            with open(state_path, "r") as file:
+            with open(state_path + "state.txt", "r") as file:
                 state = file.read()
                 return state
         else:
@@ -214,26 +214,27 @@ class LTSManager:
         # List all files in the directory
         log_path = process_path+"log"
         if os.path.exists(log_path):
-            files = [f for f in os.listdir(log_path) if f.endswith('.txt') and 'epoch_' in f]
+            files = [f for f in os.listdir(log_path) if f.endswith('.json') and 'epoch_' in f]
             if len(files) >0:
                 files.sort(key=lambda f: float(f.split('_')[1].split('.')[0]))  # Sort by the epoch number (e.g., 1.0, 2.0, etc.)
 
                 if len(files) > 1:
-                    previous_file = files[-2]  # The second-to-last file
+                    previous_file = files[-1]  # The second-to-last file
                 else:
                     return None  # If there are not enough files to get the previous one
 
                 previous_file_path = os.path.join(log_path, previous_file)
 
                 with open(previous_file_path, 'r') as file:
-                    file_content = file.read()
-
-                try:
-                    epoch_logs = json.loads(file_content)  # Parse the content as JSON
+                    epoch_logs = json.load(file)
                     return epoch_logs
-                except json.JSONDecodeError as e:
-                    print(f"Error decoding JSON from {previous_file}: {e}")
-                    return None
+
+                # try:
+                #     epoch_logs = json.loads(file_content)  # Parse the content as JSON
+                #     return epoch_logs
+                # except json.JSONDecodeError as e:
+                #     print(f"Error decoding JSON from {previous_file}: {e}")
+                #     return None
         else:
             print(f"Epoch logs file does not exists {log_path}")
             return None

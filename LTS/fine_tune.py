@@ -260,6 +260,7 @@ class MyTrainer(Trainer):
 
 
 from transformers import TrainerCallback, Trainer
+import json
 
 class EarlyStoppingCallback(TrainerCallback):
     def __init__(self, patience=5, log_dir=None, project_id="default"):
@@ -285,6 +286,5 @@ class EarlyStoppingCallback(TrainerCallback):
                         control.should_training_stop = True
                 # Save logs
             if self.log_dir:
-                with open(f"{self.log_dir}log/epoch_{state.epoch}.txt", "w") as f:
-                    for log in state.log_history:
-                        f.write(f"{log}\n")
+                with open(f"{self.log_dir}log/epoch_{state.epoch}.json", "w") as f:
+                    json.dump(state.log_history, f, indent=4)

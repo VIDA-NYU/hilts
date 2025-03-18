@@ -37,7 +37,7 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
     ## FINE TUNE MODEL
     #get base model
     with open(state_path + "state.txt", "w") as f:
-        f.write("training")
+        f.write("Training")
 
     model_name, baseline = get_model_and_baseline(trainer, metric, baseline)
 
