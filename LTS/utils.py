@@ -72,7 +72,7 @@ def print_summary(sampler):
     print(sampler.wins)
     print(sampler.losses)
 
-def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, id):
+def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, id, state_path):
     if os.path.exists(f'data/{id}/validation.csv'):
         validation = pd.read_csv(f'data/{id}/validation.csv')
     elif validation_path:
@@ -80,6 +80,8 @@ def prepare_validation(validation_path, validation_size, data, labeler, preproce
         validation = preprocessor.preprocess_df(validation)
         save_validation_data(validation, f"data/{id}/validation.csv")
     else:
+        with open(state_path + "state.txt", "w") as f:
+            f.write("Creating Validation")
         sampler = RandomSampler(data['label_cluster'].nunique(), id)
         sample_validation, _ = sampler.create_validation_data(data, validation_size)
         validation = labeler.generate_inference_data(sample_validation, 'clean_title')

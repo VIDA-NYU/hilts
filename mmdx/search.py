@@ -92,7 +92,7 @@ class VectorDB:
 
     def random_hilts_search(self, limit: int, projectId: str) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
-        csvpath =f"data/{projectId}/current_sample_training.csv"
+        csvpath =f"data/{projectId}/filename_data_labeled.csv"
         if os.path.exists(csvpath):
             df = pd.read_csv(csvpath)
             image_paths = df["image_path"].to_list()
@@ -127,7 +127,6 @@ class VectorDB:
             df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
             df_hits["title"] = df_hits["title"].fillna("")
             df_hits["types"] = df_hits["types"].fillna("").apply(list)
-            print(df_hits)
             df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
             df_hits.drop(columns=["vector", "types"], inplace=True)
             return df_hits

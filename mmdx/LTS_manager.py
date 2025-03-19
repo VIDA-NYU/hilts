@@ -26,7 +26,7 @@ class LTSManager:
 
         print(f"processid: {process_id}")
 
-        args, sampler, data, trainer, labeler = initialize_LTS(project_id)
+        args, sampler, data, trainer, labeler = initialize_LTS(project_id, state_path, label_hilts)
 
         budget = args.get("budget")
         budget_value = int(args.get("bugetValue"))

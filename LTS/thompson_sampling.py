@@ -52,10 +52,11 @@ class ThompsonSampler:
             return filtered_df
 
         if labeling == "file":
-            if os.path.exists(f"data/{self.project_id}/{filename}.csv"):
+            if os.path.exists(f"data/{self.project_id}/hilts_data.csv"):
+                # filename = "current_sample_training"
                 new_labels_df = pd.read_csv(f"data/{self.project_id}/hilts_data.csv")
                 self.update_labels(filename, new_labels_df)
-            return new_labels_df, new_labels_df["label_cluster"].unique()[0]
+            return new_labels_df, None
 
         #remove already used data
         df = df[~df['id'].isin(self.selected_ids)]
@@ -109,26 +110,35 @@ class ThompsonSampler:
 
     def update_labels(self, filename, new_labels_df):
         # Check if the CSV file exists
-        if os.path.exists(f"data/{self.project_id}/{filename}.csv"):
-            # Read the original data (df)
-            df = pd.read_csv(f"data/{self.project_id}/{filename}.csv")
-
-            # Ensure that the 'id' or common column is present to match the rows for updating
-            if "id" not in df.columns or "id" not in new_labels_df.columns:
-                raise ValueError("Both dataframes must contain an 'id' column to merge on.")
-
-
-            updated_df = df.merge(new_labels_df[['id', 'label']], on='id', how='left', suffixes=('', '_corrected'))
-
-            # Now, we update the 'label' column in df with the 'label_corrected' column from new_labels_df.
-            updated_df['label'] = updated_df['label_corrected'].combine_first(updated_df['label'])
-
-            # Drop the temporary 'label_corrected' column
-            updated_df = updated_df.drop(columns=['label_corrected'])
-
-            # Save the updated DataFrame back to CSV
-            updated_df.to_csv(f"data/{self.project_id}/{filename}.csv", index=False)
-
-            print(f"Labels updated and saved to {self.project_id}/{filename}.csv")
+        # current = "current_sample_training.csv"
+        labeled = f"{filename}_data_labeled.csv"
+        training = f"{filename}_training_labeled.csv"
+        # if os.path.exists(f"data/{self.project_id}/{current}"):
+        #     df = pd.read_csv(f"data/{self.project_id}/{current}")
+        #     self.update_label(df,new_labels_df, current)
+        if os.path.exists(f"data/{self.project_id}/{labeled}"):
+            df = pd.read_csv(f"data/{self.project_id}/{labeled}")
+            self.update_label(df,new_labels_df, labeled)
+        if os.path.exists(f"data/{self.project_id}/{training}"):
+            df = pd.read_csv(f"data/{self.project_id}/{training}")
+            self.update_label(df,new_labels_df, training)
         else:
             print(f"File {filename}.csv does not exist in {self.project_id}.")
+
+    def update_label(self, df, new_labels_df, filename):
+        # Ensure that the 'id' or common column is present to match the rows for updating
+        if "id" not in df.columns or "id" not in new_labels_df.columns:
+            raise ValueError("Both dataframes must contain an 'id' column to merge on.")
+        updated_df = df.merge(new_labels_df[['id', 'label']], on='id', how='left', suffixes=('', '_corrected'))
+
+        # Now, we update the 'label' column in df with the 'label_corrected' column from new_labels_df.
+        updated_df['label'] = updated_df['label_corrected'].combine_first(updated_df['label'])
+
+        # Drop the temporary 'label_corrected' column
+        updated_df = updated_df.drop(columns=['label_corrected'])
+
+        # Save the updated DataFrame back to CSV
+        updated_df.to_csv(f"data/{self.project_id}/{filename}", index=False)
+
+        print(f"Labels updated and saved to {self.project_id}/{filename}")
+

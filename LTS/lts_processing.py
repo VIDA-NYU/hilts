@@ -22,20 +22,20 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         file_name = f"data/{id}/{filename}_data_labeled"
         # update to the complete labeled file
         load_and_save_csv(file_name, training_data)
+        training_data = add_previous_data(training_data, id)  # ADD POSITIVE DATA IF AVAILABLE
         # save current sample for possible label update
-        training_data.to_csv(f"data/{id}/current_sample_training.csv", index=False)
+
+    training_data.to_csv(f"data/{id}/current_sample_training.csv", index=False)
 
 
     if sampler.__class__.__name__ == "ThompsonSampler":
         sampler.update(chosen_bandit, training_data)
 
-    # ADD POSITIVE DATA IF AVAILABLE
-    training_data = add_previous_data(training_data, id)
     # Balance Data (undersampling) # postpone use of undesire labels negative
     training_data, still_unbalenced = maybe_balance_data(balance, training_data)
 
     ## FINE TUNE MODEL
-    #get base model
+    # get base model
     with open(state_path + "state.txt", "w") as f:
         f.write("Training")
 
@@ -93,6 +93,8 @@ def maybe_balance_data(balance, df):
                 # Shuffle the rows
                 df = balanced_df.sample(frac=1).reset_index(drop=True)
                 print(f"Balanced data: {df.label.value_counts()}")
+        else:
+            unbalanced = True
     else:
         unbalanced = len(df[df["label"]==0]) / len(df[df["label"]==1]) >= 2
     return df, unbalanced
@@ -108,6 +110,7 @@ def get_model_and_baseline(trainer, metric, baseline):
     else:
         print(f"Starting with metric {metric} baseline {baseline}")
     print(f"Starting training")
+
     return model_name, baseline
 
 def save_bendit_results(filename, chosen_bandit, results, id):
