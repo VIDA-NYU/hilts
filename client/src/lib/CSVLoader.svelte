@@ -24,6 +24,7 @@
   let sampling = "thompson";
   let sample_size = 100;
   let model_finetune = "bert-base-uncased";
+  let model_init = "bert-base-uncased";
   let labeling = "GPT";
   let metric = "f1";
   let validation_size = 200;
@@ -50,6 +51,7 @@
     "sampling",
     "sample_size",
     "model_finetune",
+    "model_init",
     "labeling",
     "metric",
     "validation_size",
@@ -92,6 +94,7 @@
     updateArgs()
     saving = true;
     try {
+      argsDict["model_init"] = argsDict["model_finetune"];
       const response = await api.createLtsConfig(projectId, argsDict); // Pass the entered project ID and argsDict to the API
       responseMessageSave = "Project Saved!";
       console.log(response);
