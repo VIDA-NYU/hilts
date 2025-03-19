@@ -63,7 +63,6 @@ def start_training():
 def start_retraining():
     data = request.get_json()
     args = data.get('argsDict')
-    # project_id = args["projectId"]
     label_hilts = args.get("labeling")
     db.create_hilts_data(
         dirc=args["projectId"]
@@ -76,10 +75,7 @@ def start_retraining():
 
 @app.route("/api/v1/stop_training", methods=['POST'])
 def stop_training():
-    data = request.get_json()
-    args = data.get('argsDict')
-    process_id =  args["processID"]
-    ltsmanager.stop_LTS(process_id)
+    ltsmanager.stop_LTS()
     return {'message': 'LTS Stop message sent'}
 
 @app.route("/api/v1/get_status/", methods=['GET'])

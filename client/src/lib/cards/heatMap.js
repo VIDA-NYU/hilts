@@ -1,7 +1,5 @@
 
 import * as d3 from 'd3';
-// import { createChart2 } from './imagesChart';
-
 
 export function createChart(chartData, productsCount, speciesCount, HandleClick) {
 
@@ -285,11 +283,3 @@ export function createChart(chartData, productsCount, speciesCount, HandleClick)
     .text("Sold Products types and Associated Animal Species");
 
     };
-
-    export function updateChartSize(chartData, productsCount, speciesCount, HandleClick, svgId) {
-        console.log("resize")
-        const svg = d3.select(`#${svgId}`);
-        const visWidth = svg.node().clientWidth;
-        const visHeight = svg.node().clientHeight;
-        createChart(chartData, productsCount, speciesCount, HandleClick, svgId); // Re-create chart with new dimensions
-      }

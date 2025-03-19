@@ -1,8 +1,8 @@
 <script lang="ts">
   import * as api from "./Api";
   import type { Hit } from "./Api";
-  import { onMount, afterUpdate } from "svelte";
-  import { createChart, updateChartSize } from "./cards/heatMap";
+  import { onMount } from "svelte";
+  import { createChart } from "./cards/heatMap";
   import { createchartSeller } from "./cards/barChart";
   import ImageCard from "./ImageCard.svelte";
 

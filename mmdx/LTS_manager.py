@@ -36,6 +36,10 @@ class LTSManager:
         if budget == "trainingSize":
             loops = int(budget_value/args.get("sample_size"))
             for idx in range(loops):
+                with open(state_path + "loop.txt", "w") as f:
+                    f.write(str(idx+1))
+                    log_path = f"{state_path}log/"
+                self.remove_dirc(log_path)
                 if os.path.exists(stop_path):
                     print(f"Removing Stop file {stop_path}")
                     os.remove(stop_path)
@@ -134,12 +138,13 @@ class LTSManager:
         project_path = f"data/{self.project_id}/"
         process_path = f"data/{self.project_id}/{self.process_id}/"
         status = {
+            "loop": 0,
             "lts_status": "",
             "lts_state": "",
             "stats": {
                 "llm_labels": [],
-                "epochs": {},
-                "training_metrics": []
+                "epochs": [],
+                "training_metrics": {}
             }
         }
 
@@ -148,6 +153,7 @@ class LTSManager:
 
         epochs = self.get_epoch_logs(process_path)
 
+        status["loop"] = self.get_loop_idx(process_path)
         status["lts_status"] = self.process.is_alive()
         status["lts_state"] = self.get_LTS_state(process_path)
 
@@ -156,7 +162,7 @@ class LTSManager:
         if epochs:
             status["stats"]["epochs"] = epochs
         if metrics:
-            status["stats"]["training_metrics"].append(metrics)
+            status["stats"]["training_metrics"]= metrics
 
         if not status["lts_status"]:
             self.remove_dirc(process_path) ## remove process folder after process is done
@@ -164,9 +170,9 @@ class LTSManager:
         return status
 
 
-    def stop_LTS(self, processId):
-        p_process = f"data/{self.project_id}/{processId}/stop.txt"
-        with open(p_process, "r") as f:
+    def stop_LTS(self):
+        p_process = f"data/{self.project_id}/{self.process_id}/stop.txt"
+        with open(p_process, "w") as f:
             f.write("stop")
 
 
@@ -179,6 +185,14 @@ class LTSManager:
         else:
             print("No state available")
 
+    @staticmethod
+    def get_loop_idx(state_path):
+        if os.path.exists(state_path + "loop.txt"):
+            with open(state_path + "loop.txt", "r") as file:
+                idx = file.read()
+                return idx
+        else:
+            print("No state available")
 
     @staticmethod
     def get_metrics(project_path):
