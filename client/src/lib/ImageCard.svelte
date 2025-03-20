@@ -25,6 +25,9 @@
   let selectedNegKeyword: string;
   let selectedAnimal: string;
   let isSelected: boolean = true;
+  $: animalLight =  false;
+  $: notAnimalLight = false;
+
 
   descriptionsStore.subscribe((storeLabels) => {
     allLabels = storeLabels;
@@ -54,6 +57,17 @@
     if (!newLabel || newLabel === "") {
       return;
     }
+    $: {
+      if (newLabel == "animal origin"){
+        animalLight = false;
+        notAnimalLight = true;
+      }
+      if (newLabel == "not animal origin"){
+        notAnimalLight = false;
+        animalLight = true;
+      }
+    };
+
     let hitLabels = hit.labels_types_dict;
     let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
     if (typeof hitKey === 'string') {
@@ -114,7 +128,6 @@
   function removeLabels(label: string) {
     let hitLabels = hit.labels_types_dict;
     let type =  hitLabels[label] as api.LabelType;
-    console.log(hitLabels, type);
     if (hitLabels && hitLabels[label]) {
       api.removeLabel(hit.image_path, label, `${type}`);
       delete hitLabels[label];
@@ -122,6 +135,30 @@
     }
     console.log("end: ", hitLabels);
   }
+
+  function getLabelColor(label) {
+    if (label === "not animal origin") {
+      return "bg-warning"; // Assign orange color for specific value
+    } else if (label === "animal origin") {
+      return "bg-success";
+    } else {
+      return "bg-secondary";
+    }
+  }
+
+  function getBtn() {
+    if (hitLabels && Object.keys(hitLabels).length > 0) {
+        if (Object.keys(hitLabels).includes("animal origin")) {
+          animalLight = false;
+          notAnimalLight = true;
+    }else if (Object.keys(hitLabels).includes("not animal origin")) {
+          animalLight = true;
+          notAnimalLight = false;
+        }
+    }
+  }
+
+
 </script>
 
 <div class="card me-3 mb-3">
@@ -154,24 +191,16 @@
         </a>
         <strong><b>{"Price"}: </b></strong>  {parsedHitMetadata["price"] ? parsedHitMetadata["price"] : "NA" }  {parsedHitMetadata["currency"] ? parsedHitMetadata["currency"] : "NA" }<br />
         <strong><b>{"Seller"}: </b></strong> {parsedHitMetadata["seller"] ? parsedHitMetadata["seller"] : "NA" }<br />
-        <!-- {#each Object.keys(parsedHitMetadata) as key}
-      <li>
-        {#if key != "url"}
-        <strong>{key}:</strong> {parsedHitMetadata[key]}
-        {/if}
-      </li> -->
-    <!-- {/each} -->
       </p>
       <div class="btn-toolbar mb-1">
-        <!-- <div class="btn-group" role="group" aria-label=""> -->
           <button
-            class="btn btn-success me-1"
+            class="btn btn-success me-1 animal {animalLight} {getBtn()}"
             on:click={() => addLabelExclusive("animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-up" aria-hidden="true" />
           </button>
           <button
-            class="btn btn-warning"
+            class="btn btn-warning animal {notAnimalLight} {getBtn()}"
             on:click={() => addLabelExclusive("not animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-down" aria-hidden="true" />
@@ -201,26 +230,11 @@
               placeholder="Description"
             />
         </div>
-        <!-- </div> -->
-        <!-- <div class="box-container"> -->
-          <!-- <div class="btn-group me-2" role="group" aria-label="">
-            <AutoComplete
-              debug={false}
-              inputClassName="form-control"
-              items={allNegKeywords}
-              bind:selectedItem={selectedNegKeyword}
-              create={true}
-              onChange={(label) => addLabelInclusive(label, "keywords")}
-              onCreate={handleCreateKeyword}
-              placeholder="Negative Keyword"
-            />
-          </div> -->
-        <!-- </div> -->
         {#if hitLabels && Object.keys(hitLabels).length > 0}
           <div class="btn-toolbar mb-1">
             {#each Object.entries(hitLabels) as [label, value], idx}
               <span
-                class="badge rounded-pill bg-secondary me-1 mt-1 mb-1 position-relative"
+                class="badge rounded-pill me-1 mt-1 mb-1 position-relative {getLabelColor(label)}"
               >
                 <!-- style="background-color: {colors[idx]} !important;" -->
                 {label}
@@ -229,7 +243,7 @@
                   on:click={() => removeLabels(label)}
                   class="position-absolute top-0 start-100 translate-middle"
                 >
-                  <i class="fa fa-times-circle" aria-hidden="true" />
+                  <i class="fa fa-times-circle bg-primary" aria-hidden="true" />
                   <span class="visually-hidden">Remove label</span>
                 </span>
               </span>
@@ -357,4 +371,8 @@
     font-size: 1rem;
     text-align: center;
   }
+  .animal.true {
+    background-color: lightgray;
+  }
+
 </style>

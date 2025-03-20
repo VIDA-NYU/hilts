@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 from openai import OpenAI
 import pandas as pd
-
+import random
 
 class Labeling:
     def __init__(self, label_model= "llama", prompt= ""):
@@ -95,32 +95,36 @@ class Labeling:
 
     def get_gpt_label(self, row):
         prompt = row["text"]
-        response = self.model.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    # {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=800,
-                temperature=0.2,
-            )
-        return response.choices[0].message.content
+        # response = self.model.chat.completions.create(
+        #         model="gpt-4",
+        #         messages=[
+        #             # {"role": "system", "content": "You are a helpful assistant."},
+        #             {"role": "user", "content": prompt},
+        #         ],
+        #         max_tokens=800,
+        #         temperature=0.2,
+        #     )
+        # return response.choices[0].message.content
+        products = ["not a relevant product", "relevant product"]
+        return random.choice(products)
 
     def get_llama70_label(self, row):
         prompt = row["text"]
         print(row)
-        response = self.model.chat.completions.create(
-                model="meta-llama/Llama-3.3-70B-Instruct",
-                messages=[
-                    # {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=800,
-                temperature=0.2,
-            )
-        res = response.choices[0].message.content
-        print(f"res: {res}")
-        return res
+        # response = self.model.chat.completions.create(
+        #         model="meta-llama/Llama-3.3-70B-Instruct",
+        #         messages=[
+        #             # {"role": "system", "content": "You are a helpful assistant."},
+        #             {"role": "user", "content": prompt},
+        #         ],
+        #         max_tokens=800,
+        #         temperature=0.2,
+        #     )
+        # res = response.choices[0].message.content
+        # print(f"res: {res}")
+        # return res
+        products = ["not a relevant product", "relevant product"]
+        return random.choice(products)
 
     def get_mistral_label(self, row):
         prompt = row["text"]
@@ -133,14 +137,15 @@ class Labeling:
 
     def get_llama_label(self, row):
         prompt = row["text"]
-        response = self.model.chat(model='llama3.1:8b-text-q8_0', messages=[
-            {
-                'role': 'user',
-                'content': prompt,
-            },
-            ])
-        return response['message']['content'].lower()
-
+        # response = self.model.chat(model='llama3.1:8b-text-q8_0', messages=[
+        #     {
+        #         'role': 'user',
+        #         'content': prompt,
+        #     },
+        #     ])
+        # return response['message']['content'].lower()
+        products = ["not a relevant product", "relevant product"]
+        return random.choice(products)
 
     def get_file_label(self, row):
         raise NotImplementedError()

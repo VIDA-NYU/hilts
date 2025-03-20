@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Hits } from "./Api";
-  import { randomHILTS } from "./Api";
+  import { randomHILTS, restartTraining } from "./Api";
   import ImageCard from "./ImageCard.svelte";
   import LabelAll from "./LabelAll.svelte";
   import { selectedDataStore, projectName } from "./stores";
@@ -10,6 +10,7 @@
   let limit: string = "16";
   let allSelectedData: {[key: string]: boolean; };
   let projectId: string = "default";
+  let responseMessage;
 
   selectedDataStore.subscribe((storeSelectedData) => {
     allSelectedData = storeSelectedData;
@@ -48,6 +49,18 @@
     result = result;
   }
 
+  async function startTraining() {
+    try {
+      responseMessage = await restartTraining({
+        projectId: projectId,
+        labeling: "file",
+      });
+    } catch (error) {
+      responseMessage = `Error restarting model training: ${error.message}`;
+    }
+    navigate("/result?q=")
+  }
+
 </script>
 
 <div class="container">
@@ -78,6 +91,19 @@
           <option value="64">64</option>
         </select>
       </div>
+      <div class="row gy-2 gx-2 align-items-center">
+        <div class="col-auto me-2">
+          {#if projectId!== "default"}
+          <button
+                class="btn btn-primary"
+                on:click={startTraining}
+              >
+                <span class="fa fa-play" />
+                Restart LTS
+          </button>
+    {/if}
+    </div>
+    </div>
       {#await result}
         <div class="col-auto">
           <span>

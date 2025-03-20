@@ -6,13 +6,15 @@ from LTS.main import initialize_LTS
 from LTS.lts_processing import LTS
 import json
 import shutil
+from .search import VectorDB
 
 
 class LTSManager:
-    def __init__(self, projectID: str):
+    def __init__(self, projectID: str, labeldb: VectorDB):
         self.project_id = projectID
         self.status = False
         self.process = None
+        self.labeldb = labeldb
         # self.label_hilts = args.get("labeling")
 
     def train_model(self, label_hilts):
@@ -23,6 +25,7 @@ class LTSManager:
         process_id = self.process.pid
         state_path = f"data/{project_id}/{process_id}/"
         stop_path = f"data/{project_id}/{process_id}/stop.txt"
+        epoch_path= f"data/{project_id}/epoch_training.json"
 
         print(f"processid: {process_id}")
 
@@ -43,6 +46,7 @@ class LTSManager:
                 if os.path.exists(stop_path):
                     print(f"Removing Stop file {stop_path}")
                     os.remove(stop_path)
+                    os.remove(epoch_path)
                     print("Training stopped!")
                     return # End of LTS process
                 if idx == 0 and label_hilts =="file":
@@ -50,6 +54,15 @@ class LTSManager:
                 else:
                     label = args.get("labeling")
                 res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, project_id, state_path)
+
+                csvpath =f"data/{project_id}/current_sample_training.csv"
+                if os.path.exists(csvpath):
+                    df = pd.read_csv(csvpath)
+                    image_paths = df["image_path"].to_list()
+                    label_llm = ["animal origin" if label == 1 else "not animal origin" for label in df["label"].to_list()]
+                    for path, labelllm in zip(image_paths, label_llm):
+                        self.labeldb.add_label(image_path=path,label= labelllm, table="relevant")
+
                 if res:
                     result = {
                             "step": [idx],
@@ -113,7 +126,7 @@ class LTSManager:
         #     return()
 
 
-    def start_training(self, label_hits):
+    def start_training(self, label_hits, db):
         """
         Starts the model training in a separate process.
         :param args: Arguments for model training
@@ -127,6 +140,7 @@ class LTSManager:
 
         # Save the process ID to a file # DO I NEED THIS?
         process_path = f"data/{self.project_id}/{self.process.pid}"
+        project_path = f"data/{self.project_id}/"
         os.makedirs(process_path, exist_ok=True)
         with open(f"{process_path}/training_process_id.txt", "w") as f:
             f.write(f"{self.project_id}: {self.process.pid}\n")
@@ -138,22 +152,23 @@ class LTSManager:
         project_path = f"data/{self.project_id}/"
         process_path = f"data/{self.project_id}/{self.process_id}/"
         status = {
-            "loop": 0,
+            "loop": 1,
             "lts_status": "",
             "lts_state": "",
             "stats": {
                 "llm_labels": [],
-                "epochs": [],
+                "epochs": {},
                 "training_metrics": {}
             }
         }
+        loop = self.get_loop_idx(process_path)
 
         labels = self.get_llm_labels(project_path)
         metrics = self.get_metrics(project_path)
 
-        epochs = self.get_epoch_logs(process_path)
+        epochs = self.get_epoch_logs(project_path, process_path, loop)
 
-        status["loop"] = self.get_loop_idx(process_path)
+        status["loop"] = loop
         status["lts_status"] = self.process.is_alive()
         status["lts_state"] = self.get_LTS_state(process_path)
 
@@ -224,7 +239,7 @@ class LTSManager:
 
 
     @staticmethod
-    def get_epoch_logs(process_path):
+    def get_epoch_logs(project_path, process_path, loop):
         # List all files in the directory
         log_path = process_path+"log"
         if os.path.exists(log_path):
@@ -241,14 +256,19 @@ class LTSManager:
 
                 with open(previous_file_path, 'r') as file:
                     epoch_logs = json.load(file)
-                    return epoch_logs
 
-                # try:
-                #     epoch_logs = json.loads(file_content)  # Parse the content as JSON
-                #     return epoch_logs
-                # except json.JSONDecodeError as e:
-                #     print(f"Error decoding JSON from {previous_file}: {e}")
-                #     return None
+                if os.path.exists(f"{project_path}epoch_training.json"):
+                    with open(f"{project_path}epoch_training.json", 'r') as file:
+                        epochs = json.load(file)
+                        epochs[f"{loop}"] = epoch_logs
+                else:
+                    epochs = {}
+                    epochs[f"{loop}"] = epoch_logs
+
+                with open(f"{project_path}epoch_training.json", 'w') as file:
+                    json.dump(epochs, file)
+
+                return epochs
         else:
             print(f"Epoch logs file does not exists {log_path}")
             return None

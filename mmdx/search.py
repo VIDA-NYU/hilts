@@ -96,10 +96,7 @@ class VectorDB:
         if os.path.exists(csvpath):
             df = pd.read_csv(csvpath)
             image_paths = df["image_path"].to_list()
-            label_llm = ["animal origin" if label == 1 else "not animal origin" for label in df["label"].to_list()]
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
-            for path, labelllm in zip(image_paths, label_llm):
-                self.add_label(image_path=path,label= labelllm, table="relevant")
             df_hits = duckdb.sql(
                 f"""WITH filtered_data AS (
                     SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
@@ -398,7 +395,7 @@ class VectorDB:
     def create_hilts_data(self, dirc) -> str:
         result, column_names = self.labelsdb.create_labeled_data()
         df = pd.DataFrame(result, columns=column_names)
-        df.to_csv(f"data/{dirc}/labeled.csv")
+        # df.to_csv(f"data/{dirc}/labeled.csv")
         original_df = pd.read_csv(f"data/{dirc}/current_sample_training.csv")
         original_df = original_df.set_index("image_path")
         cols_to_use = df.columns.difference(original_df.columns)

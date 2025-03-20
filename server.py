@@ -51,8 +51,8 @@ def start_training():
     project_id = args["projectId"]
     label_hilts = args.get("labeling")
     global ltsmanager
-    ltsmanager = LTSManager(project_id)
-    training_process = ltsmanager.start_training(label_hilts)
+    ltsmanager = LTSManager(project_id, db)
+    training_process = ltsmanager.start_training(label_hilts, db)
     return jsonify({
         'message': 'Training started!',
         # 'process_id': training_process.pid
@@ -67,10 +67,9 @@ def start_retraining():
     db.create_hilts_data(
         dirc=args["projectId"]
     )
-    training_process = ltsmanager.start_training(label_hilts)
+    training_process = ltsmanager.start_training(label_hilts, db)
     return jsonify({
         'message': 'Training started!',
-        # 'process_id': training_process.pid
     })
 
 @app.route("/api/v1/stop_training", methods=['POST'])

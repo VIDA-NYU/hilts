@@ -15,17 +15,21 @@
   const margin = { top: 20, right: 100, bottom: 40, left: 100 };
 
   let responseMessage;
-  let previousLoop = 0;
+  let previousLoop = 1;
+  let isTrainingInProgress=false;
+  let checkLabels=false;
+
   let status = {
-    loop: 0,
+    loop: 1,
     lts_status: false,
     lts_state: "",
     stats: {
       llm_labels: [],
-      epochs: [],
+      epochs: {},
       training_metrics: { step: [] },
     },
   };
+
   let chartData = {
     precision: [],
     recall: [],
@@ -33,35 +37,39 @@
     accuracy: [],
   };
 
-  let epochs = [];
+  let   epochs = {};
   let isTraining = false;
   let isRunning = false;
   let projectId = "";
-  const epochs_history = {
-  update: function(updateData) {
-    console.log("Updating epochs history:", updateData);
-    }
-  };
 
   projectName.subscribe((name) => {
     projectId = name;
   });
 
   // Initialize training state
-  let disableBottom = false;
+  let disableBottom = true;
   let steps_training = [];
   let states = [];
   let currentStep = 0;
   let loop = 0;
 
+  // const updateChartData = (msg) => {
+  //   if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
+  //     msg.precision.forEach((value) => chartData.precision.push(value));
+  //     msg.recall.forEach((value) => chartData.recall.push(value));
+  //     msg.f1_score.forEach((value) => chartData.f1_score.push(value));
+  //     msg.accuracy.forEach((value) => chartData.accuracy.push(value));
+  //   }
+  // };
   const updateChartData = (msg) => {
-    if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
-      msg.precision.forEach((value) => chartData.precision.push(value));
-      msg.recall.forEach((value) => chartData.recall.push(value));
-      msg.f1_score.forEach((value) => chartData.f1_score.push(value));
-      msg.accuracy.forEach((value) => chartData.accuracy.push(value));
-    }
-  };
+  if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
+    // Keep only the last 5 values for each score list
+    chartData.precision.push(...msg.precision.slice(-5));
+    chartData.recall.push(...msg.recall.slice(-5));
+    chartData.f1_score.push(...msg.f1_score.slice(-5));
+    chartData.accuracy.push(...msg.accuracy.slice(-5));
+  }
+};
   const createChart = () => {
     const x0 = d3
       .scaleBand()
@@ -174,6 +182,10 @@
       .text((d) => d.label);
   };
 
+  const formatNumber = (number) => {
+  return number.toFixed(3); // Limits the number to 5 decimal places
+  };
+
   async function getStatus() {
     status = await api.getStatus();
     console.log(status);
@@ -182,9 +194,9 @@
 
       $: {
         if (loop !== previousLoop) {
-          epochs_history.update({previousLoop:  epochs});
+          // epochsHistory = [...epochsHistory, epochs];
           // Reset everything for the new loop
-          epochs = []; // Clear previous epochs
+          // epochs = []; // Clear previous epochs
           states = []; // Clear previous states
           currentStep = 0; // Reset to first step
           console.log(`Training started or restarted for loop ${loop}!`);
@@ -193,18 +205,23 @@
       previousLoop = loop;
 
       isRunning = status.lts_status;
-      console.log(isRunning);
+      $: {if (isTrainingInProgress) {
+        isTrainingInProgress = isRunning;
+        checkLabels = isTrainingInProgress === checkLabels;
+      }
+     };
       if (status.lts_state && !states.includes(status.lts_state)) {
         states = [...states, status.lts_state];
         changeStep();
         $: {
           if (status.lts_state == "Training") {
             isTraining = true;
+            disableBottom =false;
           }
         }
       }
       $: {
-        if (status.stats.epochs && status.stats.epochs.length > 0) {
+        if (Object.keys(status.stats.epochs).length > 0) {
           epochs = status.stats.epochs;
         }
         if (
@@ -220,6 +237,7 @@
     } else {
       isRunning = false;
       isTraining = false;
+      isTrainingInProgress = false;
     }
   }
 
@@ -249,31 +267,24 @@
       responseMessage = `Error stopping model training: ${error.message}`;
     }
     disableBottom = true;
-    // navigate("/search/random?q=");
-  }
-
-  async function restartTraining() {
-    try {
-      responseMessage = await api.restartTraining({
-        projectId: projectId,
-        labeling: "file",
-      });
-    } catch (error) {
-      responseMessage = `Error restarting model training: ${error.message}`;
-    }
-    disableBottom = true;
+    isTrainingInProgress = true;
   }
 
   export let location: Location;
   $: {
   }
+
 </script>
 
 <div class="container-fluid">
-  <div class="row m-2">
+  <div class="row m-3">
     <div class="col-2">
+      <div class="card m-3">
+        <div class="card-header bg-primary text-white">LTS Status:
+            {isRunning ? "Running" : "Not running"}</div>
+      </div>
       {#if states.length > 0}
-        <div class="stepper">
+        <div class="stepper m-3">
           {#each states as step, index (step)}
             <div
               class="step"
@@ -300,112 +311,91 @@
             >
               0
             </div>
-            <div class="step-name">Starting</div>
+            <div class="step-name">Waiting</div>
           </div>
         </div>
       {/if}
-    </div>
-    <!-- First Column (smaller) -->
-    {#if isTraining}
-      <div class="col-6">
-        <div class="card m-2">
-          <div class="card-header bg-primary text-white">LTS: Training Logs</div>
-          <div class="card-body">
+
+  </div>
+    {#if isTraining || Object.entries(epochs).length > 0}
+      <div class="col-4">
+        <div class="card m-3 fixed-card">
+          <div class="card-header bg-primary text-white justify-content-between">LTS: Training Logs
+            <button
+              class="btn btn-light mb-2 m-2"
+              on:click={interference}
+              disabled={disableBottom}
+            >
+              <span class="fa fa-pause" />
+              Stop LTS
+            </button>
+            {#if isTrainingInProgress}
+            <span>
+              <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+              Waiting for current training to finish...
+            </span>
+            {/if}
+          </div>
             <div class="w-full xl:w-4/12 mt-6">
-              <!-- Epoch Logs -->
               <div class="log-epoch">
                 <div class="epoch">
-                  <h5>Loop {loop}</h5>
-                  {#if epochs.length > 0}
-                    <table class="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>Epoch</th>
-                          <th>Accuracy</th>
-                          <th>F1</th>
-                          <th>Precision</th>
-                          <th>Recall</th>
-                          <th>Loss</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {#each epochs as epoch}
-                          <tr>
-                            <td>{epoch.epoch}</td>
-                            <td>{epoch.eval_accuracy}</td>
-                            <td>{epoch.eval_f1}</td>
-                            <td>{epoch.eval_precision}</td>
-                            <td>{epoch.eval_recall}</td>
-                            <td>{epoch.eval_loss}</td>
-                          </tr>
-                        {/each}
-                      </tbody>
-                    </table>
-                  {:else}
-                    <p>Waiting for training results</p>
-                  {/if}
+                  {#each Object.entries(epochs) as [loopNumber, epochsForLoop]}
+                    <div class="row mb-3">
+                      <h5>Training {loopNumber} Results</h5>
+                        <table class="table table-bordered">
+                          <thead>
+                            <tr>
+                              <th>Epoch</th>
+                              <th>Accuracy</th>
+                              <th>F1</th>
+                              <th>Precision</th>
+                              <th>Recall</th>
+                              <th>Loss</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {#each epochsForLoop as epoch}
+                              <tr>
+                                <td>{epoch.epoch}</td>
+                                <td>{formatNumber(epoch.eval_accuracy)}</td>
+                                <td>{formatNumber(epoch.eval_f1)}</td>
+                                <td>{formatNumber(epoch.eval_precision)}</td>
+                                <td>{formatNumber(epoch.eval_recall)}</td>
+                                <td>{formatNumber(epoch.eval_loss)}</td>
+                              </tr>
+                            {/each}
+                          </tbody>
+                        </table>
+                        </div>
+                    {/each}
                 </div>
               </div>
             </div>
-          </div>
         </div>
       </div>
       <div class="col-4">
-        <button
-          class="btn btn-primary"
-          on:click={interference}
-          disabled={disableBottom}
-        >
-          <span class="fa fa-pause" />
-          Stop LTS
+        <div class="card m-3">
+          <div class="card-header bg-primary text-white justify-content-between align-items-center">Model Metrics
+            <button
+              class="btn btn-light"
+              on:click={(() => navigate("/search/random?q="))}
+              disabled={!checkLabels}
+            >
+            <span class="fa fa-tag" />
+            Check Labels
         </button>
-        <button
-          class="btn btn-primary"
-          on:click={restartTraining}
-          disabled={disableBottom}
-        >
-          <span class="fa fa-play" />
-          Restart LTS
-        </button>
+          </div>
+        </div>
         <svg id="chart"></svg>
-      </div>
+        </div>
     {/if}
   </div>
 </div>
 
 <style>
-  .danger {
-    background-color: #f44336;
-  }
-  h1 {
-    color: #636363;
-  }
-  h3 {
-    color: #636363;
-  }
-
-  /* Basic styling */
-  .container {
-    width: 80%;
-    margin: auto;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-  }
-
-  .status {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 10px;
-    background-color: #eef2f7;
-    border-radius: 8px;
-  }
   .epoch {
     display: flex;
-    flex: 1;
+    flex-direction: column;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
@@ -415,21 +405,12 @@
   }
 
   .log-epoch {
+    display: flex;
+    flex-direction: column;
     margin-bottom: 20px;
   }
-
-  .log-epoch ul {
-    list-style-type: none;
-    padding: 0;
-  }
-
-  .log-epoch li {
-    background-color: #f9fafb;
-    padding: 10px;
-    border-radius: 4px;
-    margin: 5px 0;
-    font-size: 14px;
-    word-wrap: break-word;
+  .table {
+    margin-top: 10px;
   }
 
   .stepper {
@@ -467,10 +448,31 @@
   }
 
   .step.completed .circle {
-    background-color: #e4dede57; /* Gray for completed steps */
+    background-color: #806e6e57; /* Gray for completed steps */
   }
 
   .step-name {
     font-size: 16px;
   }
+
+  .card-body {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  table-layout: fixed;
+  text-align: center;
+}
+
+.table-bordered {
+  border-collapse: collapse; /* Optional: Ensures borders are collapsed */
+}
+.fixed-card {
+  height: 500px; /* Adjust this height value as needed */
+  display: flex;
+  flex-direction: column;
+}
+
 </style>
