@@ -10,10 +10,12 @@
   } from "./stores";
   import AutoComplete from "simple-svelte-autocomplete";
   import * as api from "./Api";
+  import { get } from "svelte/store";
 
   export let hit: Hit;
   $: parsedHitMetadata = hit.metadata;
   $: hitLabels = hit.labels_types_dict;
+  $: animalLabel = hit.animal;
 
   let showModal = false;
 
@@ -25,8 +27,6 @@
   let selectedNegKeyword: string;
   let selectedAnimal: string;
   let isSelected: boolean = true;
-  $: animalLight =  false;
-  $: notAnimalLight = false;
 
 
   descriptionsStore.subscribe((storeLabels) => {
@@ -57,16 +57,11 @@
     if (!newLabel || newLabel === "") {
       return;
     }
-    $: {
-      if (newLabel == "animal origin"){
-        animalLight = false;
-        notAnimalLight = true;
-      }
-      if (newLabel == "not animal origin"){
-        notAnimalLight = false;
-        animalLight = true;
-      }
-    };
+    if (type == "relevant"){
+      animalLabel = newLabel;
+      hit.animal = animalLabel;
+    }
+
 
     let hitLabels = hit.labels_types_dict;
     let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
@@ -96,7 +91,6 @@
     }
     let hitLabels = hit.labels_types_dict;
     let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
-    console.log(hitKey)
     if ((Array.isArray(hitKey)) && hitKey.length > 0) {
       if (hitKey.includes(newLabel)) {
         return;
@@ -146,18 +140,18 @@
     }
   }
 
-  function getBtn() {
-    if (hitLabels && Object.keys(hitLabels).length > 0) {
-        if (Object.keys(hitLabels).includes("animal origin")) {
-          animalLight = false;
-          notAnimalLight = true;
-    }else if (Object.keys(hitLabels).includes("not animal origin")) {
-          animalLight = true;
-          notAnimalLight = false;
-        }
+  function getBtn(type) {
+    // console.log(type)
+    // console.log("getting type of")
+    // console.log( hit.animal)
+    animalLabel = hit.animal;
+    console.log("animal:", animalLabel)
+    console.log("meta:", hit.metadata)
+    if (type !== animalLabel){
+      return "animal true"
     }
+    return ""
   }
-
 
 </script>
 
@@ -194,13 +188,13 @@
       </p>
       <div class="btn-toolbar mb-1">
           <button
-            class="btn btn-success me-1 animal {animalLight} {getBtn()}"
+            class="btn btn-success me-1 {animalLabel !== "animal origin" ? "animal true": ''}"
             on:click={() => addLabelExclusive("animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-up" aria-hidden="true" />
           </button>
           <button
-            class="btn btn-warning animal {notAnimalLight} {getBtn()}"
+            class="btn btn-warning {animalLabel !== "not animal origin" ? "animal true": ''}"
             on:click={() => addLabelExclusive("not animal origin", "relevant")}
           >
             <i class="fa fa-thumbs-down" aria-hidden="true" />

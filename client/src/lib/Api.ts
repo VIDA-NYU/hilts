@@ -14,6 +14,7 @@ export interface Hit {
   image_path: string;
   title: string;
   metadata?: string;
+  animal?: string;
   labels_types_dict: { [key: string]: LabelType };
 }
 

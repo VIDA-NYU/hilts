@@ -14,6 +14,7 @@
 
   export let allHits: Hit[];
 
+
   let allDescriptions: string[];
   let allAnimals: string[];
   let allNegKeywords: string[];
@@ -46,7 +47,6 @@
     if (!newLabel || newLabel === "") {
       return;
     }
-    console.log(labels);
 
     if (
       labels &&
@@ -64,7 +64,14 @@
     // Send label for all hits marked
     for (let hit of selectedHits) {
       let hitLabels = hit.labels_types_dict;
+      let animalLabel = hit.animal
       let hitKey = Object.keys(hitLabels).find((key) => hitLabels[key] === type);
+
+      if (type == "relevant"){
+        animalLabel = newLabel;
+        hit.animal = animalLabel;
+      }
+
       if (hitKey) {
         if (hitKey === newLabel) {
           // label already applied, skip to next

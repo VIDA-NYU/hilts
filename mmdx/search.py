@@ -124,6 +124,7 @@ class VectorDB:
             df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
             df_hits["title"] = df_hits["title"].fillna("")
             df_hits["types"] = df_hits["types"].fillna("").apply(list)
+            df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
             df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
             df_hits.drop(columns=["vector", "types"], inplace=True)
             return df_hits
@@ -156,6 +157,7 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
+        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         return df_hits
@@ -222,6 +224,7 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
+        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         return df_hits
@@ -263,6 +266,7 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
+        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         return df_hits
@@ -325,6 +329,7 @@ class VectorDB:
         df_join["labels"] = df_join["labels"].fillna("").apply(list)
         df_join["types"] = df_join["types"].fillna("").apply(list)
         df_join["title"] = df_join["title"].fillna("")
+        df_join["animal"] = df_join.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
         df_join["labels_types_dict"] = df_join.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_join.drop(columns=["types"], inplace=True)
         return df_join
@@ -359,6 +364,7 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
+        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         print(df_hits["labels_types_dict"])
