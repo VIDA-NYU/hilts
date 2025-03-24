@@ -41,12 +41,12 @@ class LTSManager:
             for idx in range(loops):
                 with open(state_path + "loop.txt", "w") as f:
                     f.write(str(idx+1))
-                    log_path = f"{state_path}log/"
+                log_path = f"{state_path}log/"
                 self.remove_dirc(log_path)
                 if os.path.exists(stop_path):
                     print(f"Removing Stop file {stop_path}")
                     os.remove(stop_path)
-                    os.remove(epoch_path)
+                    # os.remove(epoch_path)
                     print("Training stopped!")
                     return # End of LTS process
                 if idx == 0 and label_hilts =="file":
@@ -65,7 +65,7 @@ class LTSManager:
 
                 if res:
                     result = {
-                            "step": [idx],
+                            "step": [idx+1],
                             "precision": [res["eval_precision"]],
                             "recall": [res["eval_recall"]],
                             "f1_score": [res["eval_f1"]],
@@ -93,37 +93,6 @@ class LTSManager:
 
         # TODO
         # elif budget=="metric":
-        #     generate = True
-        #     idx = 0
-        #     while generate:
-        #         process_path = f"data/{project_id}/{os.getpid()}/stop.txt"
-        #         if os.path.exists(process_path):
-        #             print("Training stopped!")
-        #             os.remove(process_path)
-        #             print("Training stopped!")
-        #             break
-        #         result = LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), args.get("labeling"), idx, project_id)
-        #         if result[f'eval_{args.get("metric")}'] >= budget_value:
-        #             generate = False
-        #         idx+=1
-        #         result = {
-        #             "step": idx,
-        #             "precision": result["eval_precision"],
-        #             "recall": result["eval_recall"],
-        #             "f1_score": result["eval_f1"],
-        #             "accuracy": result["eval_accuracy"]
-        #         }
-                # training_results.append(result)
-
-                # Emit the training result after each step
-                # socketio.emit('my response', result)
-                # time.sleep(120)
-
-        # if not os.path.exists(f"data/{project_id}/stop.txt"):
-        #     return()
-        #     # socketio.emit('my response', {'message': 'Training complete!'})
-        # else:
-        #     return()
 
 
     def start_training(self, label_hits, db):
@@ -162,14 +131,14 @@ class LTSManager:
             }
         }
         loop = self.get_loop_idx(process_path)
+        status["lts_status"] = self.process.is_alive()
+        status["loop"] = loop
 
-        labels = self.get_llm_labels(project_path)
         metrics = self.get_metrics(project_path)
 
         epochs = self.get_epoch_logs(project_path, process_path, loop)
+        labels = self.get_llm_labels(project_path)
 
-        status["loop"] = loop
-        status["lts_status"] = self.process.is_alive()
         status["lts_state"] = self.get_LTS_state(process_path)
 
         if labels:
@@ -199,6 +168,7 @@ class LTSManager:
                 return state
         else:
             print("No state available")
+            return None
 
     @staticmethod
     def get_loop_idx(state_path):
@@ -207,7 +177,8 @@ class LTSManager:
                 idx = file.read()
                 return idx
         else:
-            print("No state available")
+            print("No loop available")
+            return 1
 
     @staticmethod
     def get_metrics(project_path):
@@ -243,9 +214,11 @@ class LTSManager:
         # List all files in the directory
         log_path = process_path+"log"
         if os.path.exists(log_path):
+            if loop == 1 and os.path.exists(f"{project_path}epoch_training.json"):
+                os.remove(f"{project_path}epoch_training.json")
             files = [f for f in os.listdir(log_path) if f.endswith('.json') and 'epoch_' in f]
             if len(files) >0:
-                files.sort(key=lambda f: float(f.split('_')[1].split('.')[0]))  # Sort by the epoch number (e.g., 1.0, 2.0, etc.)
+                files.sort(key=lambda f: float(f.split('_')[1].split('.')[0]))
 
                 if len(files) > 1:
                     previous_file = files[-1]  # The second-to-last file
@@ -267,8 +240,17 @@ class LTSManager:
 
                 with open(f"{project_path}epoch_training.json", 'w') as file:
                     json.dump(epochs, file)
-
                 return epochs
+        elif os.path.exists(f"{project_path}epoch_training.json"):
+            print(f"no epoch yet for loop {loop}")
+            if loop != 1:
+                with open(f"{project_path}epoch_training.json", 'r') as file:
+                    epochs = json.load(file)
+                    return epochs
+            else:
+                os.remove(f"{project_path}epoch_training.json")
+                return None
+
         else:
             print(f"Epoch logs file does not exists {log_path}")
             return None

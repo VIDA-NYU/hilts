@@ -1,14 +1,21 @@
 <script lang=ts>
   import * as api from "./Api";
   import Modal from "./Modal.svelte";
-  import { projectName } from "./stores";
+  import { projectName, runningState } from "./stores";
   export let dataToCSV = [];
   import { navigate } from "svelte-routing";
 
 
   export let allowedFileExtensions = ["csv"];
 
+  let isRunning = false;
+
+  runningState.subscribe((run) => {
+    isRunning = run;
+  });
+
   let maxFileSize = 31457280;
+  let starting = false;
 
   // Variables for form and responses
   let uploader;
@@ -67,8 +74,6 @@
     // Use eval to get the value of the variable by its name
     argsDict[variable] = eval(variable);
   });
-
-  console.log(argsDict);
   }
 
   // Handle file upload
@@ -121,9 +126,9 @@
   }
 
 
-
   async function startTraining(){
      try {
+      starting = true;
       const trainingResponse = await api.startTraining({ projectId: projectId, labeling: ""});
     } catch (error) {
       const responseMessage = `Error starting model training: ${error.message}`;
@@ -136,7 +141,16 @@
 <div class="container-fluid px-5">
   <!-- Create Project ID Section -->
   <div class="py-4">
-    <!-- <h1 class="">Enter Project Name</h1> -->
+    {#if  isRunning}
+    <div class="alert alert-primary position-absolute bottom-50 end-50" role="alert">
+      <h1>
+        <span class="fa fa-exclamation-triangle" />
+        Project {projectId} running
+      </h1>
+    </div>
+    {/if}
+    <!-- <h1 class=
+     "">Enter Project Name</h1> -->
     <div class="form-group">
       <label for="projectIdInput">Project Name</label>
       <input
@@ -152,12 +166,16 @@
       <button
         class="btn btn-info"
         on:click={() => confirmName(projectId)}
+        disabled={isRunning}
       >
         <span class="fa fa-id-card mr-2" />
         Confirm Project Name
       </button>
       <!-- Reset Project ID Button -->
-      <button class="btn btn-warning ml-2" on:click={resetProjectId}>
+      <button class="btn btn-warning ml-2"
+      on:click={resetProjectId}
+      disabled={isRunning}
+      >
         <span class="fa fa-refresh mr-2" />
         Reset Project
       </button>
@@ -183,7 +201,10 @@
       style="max-width:400px"
     />
     <div class="pt-2">
-      <button class="btn btn-primary" on:click={uploadFile}>
+      <button class="btn btn-primary"
+      on:click={uploadFile}
+      disabled={isRunning}
+      >
         <span class="fa fa-download mr-2" />
         Load File
       </button>
@@ -206,16 +227,24 @@
   <div class="py-4">
     <label for="seetings">LTS Settings</label>
     <div class="pt-2">
-      <button class="btn btn-secondary" on:click={() => (showModal = true)}>
+      <button class="btn btn-secondary" on:click={() => (showModal = true)}  disabled={isRunning}>
         <!-- <span class="fa fa-cogs mr-2" /> -->
         Update Settings
       </button>
       <div class="pt-2">
-        <button class="btn btn-success" on:click={startTraining}>
+        <button class="btn btn-success"
+          on:click={startTraining}
+          disabled={isRunning}>
           <!-- startLTSGenerator -->
           <span class="fa fa-cogs mr-2" />
           Start Project
         </button>
+        {#if starting}
+            <span>
+              <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+              Waiting project to start...
+            </span>
+        {/if}
       </div>
 
       <div class="mt-2">

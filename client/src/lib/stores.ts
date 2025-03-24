@@ -17,4 +17,5 @@ export const processId = writable(0);
 export const dataGraph = writable({});
 export const products = writable([]);
 export const species = writable([]);
+export const runningState = writable(true);
 

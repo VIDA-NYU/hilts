@@ -83,8 +83,8 @@ def get_training_results() -> pd.DataFrame:
     try:
         status = ltsmanager.get_status()
         return status
-    except NameError:
-        print("No manager created")
+    except NameError as e:
+        print(f"No manager created {e}")
         return {}
 
 # Path for all the static files (compiled JS/CSS, etc.)

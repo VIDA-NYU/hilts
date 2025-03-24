@@ -3,7 +3,7 @@
   import { onMount, onDestroy } from "svelte";
   import { io } from "socket.io-client";
   // import {createChart} from "./cards/trainingChart"
-  import { projectName } from "./stores";
+  import { projectName, runningState } from "./stores";
   import { navigate } from "svelte-routing";
   import * as d3 from "d3";
 
@@ -45,6 +45,11 @@
   projectName.subscribe((name) => {
     projectId = name;
   });
+
+  runningState.subscribe((run) => {
+    isRunning = run;
+  });
+
 
   // Initialize training state
   let disableBottom = true;
@@ -205,6 +210,9 @@
       previousLoop = loop;
 
       isRunning = status.lts_status;
+      runningState.update(value => isRunning);
+
+
       $: {if (isTrainingInProgress) {
         isTrainingInProgress = isRunning;
         checkLabels = isTrainingInProgress === checkLabels;
@@ -236,6 +244,7 @@
       }
     } else {
       isRunning = false;
+      runningState.update(value => isRunning);
       isTraining = false;
       isTrainingInProgress = false;
     }
@@ -342,7 +351,7 @@
                   {#each Object.entries(epochs) as [loopNumber, epochsForLoop]}
                     <div class="row mb-3">
                       <h5>Training {loopNumber} Results</h5>
-                        <table class="table table-bordered">
+                        <table class="table table-striped table-primary">
                           <thead>
                             <tr>
                               <th>Epoch</th>
