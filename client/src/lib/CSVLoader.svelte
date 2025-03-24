@@ -14,6 +14,8 @@
     isRunning = run;
   });
 
+  let projectMessage="";
+
   let maxFileSize = 31457280;
   let starting = false;
 
@@ -117,11 +119,18 @@
     });
   }
 
-  function confirmName(new_name) {
+  async function confirmName(new_name) {
     projectName.update((projectId) => {
       projectId = new_name;
       return projectId;
-    });
+    })
+
+    try {
+      projectMessage = await api.setLabelsDb(projectId);
+    } catch (error) {
+      projectMessage = `Error setting labels db: ${error.message}`;
+    }
+
     return projectId;
   }
 
@@ -181,6 +190,11 @@
       </button>
     </div>
     <!-- </div> -->
+    {#if projectMessage}
+      <div>
+        <p>{projectMessage}</p>
+      </div>
+    {/if}
 
     {#if projectId}
       <div class="mt-2">

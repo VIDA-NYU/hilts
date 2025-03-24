@@ -36,8 +36,6 @@ class VectorDB:
         self.model = model
         self.tbl = table
         self.data_path = data_path
-        self.labelsdb_path = os.path.join(db_path, "labels.db")
-        self.labelsdb = LabelsDB(self.labelsdb_path)
 
     @staticmethod
     def from_data_path(
@@ -68,6 +66,10 @@ class VectorDB:
             else:
                 tbl = load_df(db, table_name, data_path, model, S3_Client)
             return VectorDB(db_path, db, tbl, model, data_path)
+
+    def set_label_db(self, project_path: str):
+        self.labelsdb_path = os.path.join(f"data/{project_path}", "labels.db")
+        self.labelsdb = LabelsDB(self.labelsdb_path)
 
     def count_rows(self) -> int:
         return len(self.tbl)

@@ -239,7 +239,6 @@
           updateChartData(status["stats"]["training_metrics"]);
           steps_training = status["stats"]["training_metrics"]["step"];
           steps_training = steps_training.slice(-5)
-          console.log(steps_training);
           createChart(); // Re-create the chart with updated data
         }
       }
