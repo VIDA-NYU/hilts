@@ -11,6 +11,7 @@
   let allSelectedData: {[key: string]: boolean; };
   let projectId: string = "default";
   let responseMessage;
+  let isTrainingInProgress = false;
 
   selectedDataStore.subscribe((storeSelectedData) => {
     allSelectedData = storeSelectedData;
@@ -50,6 +51,7 @@
   }
 
   async function startTraining() {
+    isTrainingInProgress = true; // Set to true when training starts
     try {
       responseMessage = await restartTraining({
         projectId: projectId,
@@ -57,8 +59,10 @@
       });
     } catch (error) {
       responseMessage = `Error restarting model training: ${error.message}`;
+    } finally {
+      isTrainingInProgress = false; // Set to false when training finishes
     }
-    navigate("/result?q=")
+    navigate("/result?q=");
   }
 
 </script>
@@ -66,18 +70,18 @@
 <div class="container">
   <div class="py-4">
     <div class="row gy-2 gx-2 align-items-center">
-      <div class="col-auto me-2">
-        <button class="btn btn-primary" on:click={onQuerySubmit}>
+      <!-- <div class="col-auto me-2">
+        <button class="btn btn-primary" on:click={onQuerySubmit} disabled={}>
           <i class="fa fa-random" aria-hidden="true" />
           Load new samples
         </button>
-      </div>
-      <div class="col-auto">
+      </div> -->
+      <!-- <div class="col-auto">
         <label class="col-form-label" for="limitSelect">
           Number of results:
         </label>
-      </div>
-      <div class="col-auto">
+      </div> -->
+      <!-- <div class="col-auto">
         <select
           class="form-select form-select-sm"
           id="limitSelect"
@@ -90,18 +94,27 @@
           <option value="32">32</option>
           <option value="64">64</option>
         </select>
-      </div>
+      </div> -->
       <div class="row gy-2 gx-2 align-items-center">
         <div class="col-auto me-2">
           {#if projectId!== "default"}
           <button
                 class="btn btn-primary"
                 on:click={startTraining}
+                disabled={isTrainingInProgress}
               >
                 <span class="fa fa-play" />
                 Restart LTS
           </button>
     {/if}
+    </div>
+    <div class="col-auto">
+      {#if isTrainingInProgress}
+        <span>
+          <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+          Restarting LTS training...
+        </span>
+      {/if}
     </div>
     </div>
       {#await result}

@@ -19,6 +19,8 @@ from mmdx.s3_client import S3Client
 from mmdx.LTS_manager import LTSManager
 from io import BytesIO
 import json
+import multiprocessing
+
 
 
 app = Flask(__name__)
@@ -64,9 +66,7 @@ def start_retraining():
     data = request.get_json()
     args = data.get('argsDict')
     label_hilts = args.get("labeling")
-    db.create_hilts_data(
-        dirc=args["projectId"]
-    )
+    db.create_hilts_data()
     training_process = ltsmanager.start_training(label_hilts, db)
     return jsonify({
         'message': 'Training started!',
@@ -81,6 +81,10 @@ def stop_training():
 def set_labels_db():
     data = request.get_json()
     project_id = data.get('projectId')
+    if not os.path.exists(f"data/{project_id}"):
+        os.makedirs(f"data/{project_id}")
+    if not os.path.exists(f"data/{project_id}/hilts"):
+        os.makedirs(f"data/{project_id}/hilts")
     db.set_label_db(project_id)
     return {'message': 'db set'}
 
@@ -124,7 +128,7 @@ def random_hilts_search():
     projectId: str = request.args.get("projectId", "default", type=str)
     limit: int = request.args.get("limit", 12, type=int)
     print(f"getting data from project: {projectId}")
-    hits = db.random_hilts_search(limit=limit, projectId=projectId)
+    hits = db.random_hilts_search(limit=limit)
     return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
 

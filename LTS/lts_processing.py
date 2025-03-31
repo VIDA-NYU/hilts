@@ -5,14 +5,14 @@ import json
 from .utils import load_and_save_csv
 from .config import update_config
 
-def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, id, state_path):
-    training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename, state_path)
+def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, id, project_path, state_path):
+    training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename, project_path)
     if training_data.empty:
         return None
 
     ## Generate labels
     if labeling != "file":
-        with open(state_path + "state.txt", "w") as f:
+        with open(project_path + "/state.txt", "w") as f:
             f.write("LLM labeling")
         training_data = labeler.generate_inference_data(training_data, 'clean_title')
         training_data["answer"] = training_data.apply(lambda x: labeler.predict_animal_product(x), axis=1)
@@ -24,10 +24,10 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         load_and_save_csv(file_name, training_data)
         training_data = add_previous_data(training_data, id)  # ADD POSITIVE DATA IF AVAILABLE
         # save current sample for possible label update
+        training_data.to_csv(f"data/{id}/current_sample_training.csv", index=False)
+        return {}
 
     training_data.to_csv(f"data/{id}/current_sample_training.csv", index=False)
-
-
     if sampler.__class__.__name__ == "ThompsonSampler":
         sampler.update(chosen_bandit, training_data)
 
@@ -36,12 +36,12 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
 
     ## FINE TUNE MODEL
     # get base model
-    with open(state_path + "state.txt", "w") as f:
+    with open(project_path + "/state.txt", "w") as f:
         f.write("Training")
 
     model_name, baseline = get_model_and_baseline(trainer, metric, baseline)
 
-    results, _ = trainer.train_data(training_data, still_unbalenced, state_path)
+    results, results_test, _ = trainer.train_data(training_data, still_unbalenced, state_path)
 
     improved = (results[f"eval_{metric}"] - baseline) > 0
 
@@ -64,7 +64,7 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
         load_and_save_csv(f"data/{id}/positive_data", training_data[training_data["label"]==1])
 
     save_bendit_results(filename, chosen_bandit, results, id)
-    return results
+    return results_test
 
 
 

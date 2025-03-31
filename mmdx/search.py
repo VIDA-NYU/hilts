@@ -13,6 +13,7 @@ from .settings import DEFAULT_TABLE_NAME, DB_BATCH_LOAD, DB_BATCH_SIZE
 from .s3_client import S3Client
 from io import BytesIO
 import re
+import json
 
 
 duckdb.sql(
@@ -67,9 +68,17 @@ class VectorDB:
                 tbl = load_df(db, table_name, data_path, model, S3_Client)
             return VectorDB(db_path, db, tbl, model, data_path)
 
-    def set_label_db(self, project_path: str):
-        self.labelsdb_path = os.path.join(f"data/{project_path}", "labels.db")
+    def set_label_db(self, project_id: str):
+        self.labelsdb_path = os.path.join(f"data/{project_id}", "labels.db")
         self.labelsdb = LabelsDB(self.labelsdb_path)
+        self.set_paths(project_id)
+
+    def set_paths(self, project_id):
+        self.project_id = project_id
+        self.csvpath =f"data/{project_id}/current_sample_training.csv"
+        self.hilts_path= f"data/{project_id}/hilts/hilts_sample.json"
+        self.hilts_train = f"data/{project_id}/hilts_data.csv"
+
 
     def count_rows(self) -> int:
         return len(self.tbl)
@@ -92,13 +101,25 @@ class VectorDB:
     def get_label_counts(self) -> dict:
         return self.labelsdb.counts()
 
-    def random_hilts_search(self, limit: int, projectId: str) -> pd.DataFrame:
+    def random_hilts_search(self, limit: int) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
-        csvpath =f"data/{projectId}/filename_data_labeled.csv"
-        if os.path.exists(csvpath):
-            df = pd.read_csv(csvpath)
-            image_paths = df["image_path"].to_list()
+
+        if os.path.exists(self.csvpath):
+            hilts_data = {}
+            previous = []
+            if os.path.exists(self.hilts_path):
+                with open(self.hilts_path, "r") as file:
+                    hilts_data = json.load(file)
+                    previous = hilts_data.keys()
+
+            with open(f"data/{self.project_id}/config_file.json", "r") as f:
+                config = json.load(f)
+                limit = config["humanLabels"]
+
+            df = pd.read_csv(self.csvpath)
+            image_paths = [path for path in df["image_path"].to_list() if path not in previous]
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
+            print(image_path_list_str)
             df_hits = duckdb.sql(
                 f"""WITH filtered_data AS (
                     SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
@@ -126,9 +147,23 @@ class VectorDB:
             df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
             df_hits["title"] = df_hits["title"].fillna("")
             df_hits["types"] = df_hits["types"].fillna("").apply(list)
-            df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
+            df_hits["animal"] = df_hits.apply(
+                lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+                axis=1
+            )
+            print(df_hits["labels"])
+            print(df_hits["types"])
             df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
             df_hits.drop(columns=["vector", "types"], inplace=True)
+
+            for image_path in image_paths:
+                if image_path not in hilts_data:
+                    hilts_data[image_path] = {}  # You can customize this default structure if needed
+                animal_label = df_hits[df_hits["image_path"] == image_path]["animal"].values
+                if len(animal_label) > 0:
+                    hilts_data[image_path]["llm_label"] = animal_label[0]
+            with open(self.hilts_path, "w") as file:
+                json.dump(hilts_data, file)
             return df_hits
         else:
             return self.random_search(limit)
@@ -159,7 +194,10 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
-        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
+        df_hits["animal"] = df_hits.apply(
+            lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+            axis=1
+        )
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         return df_hits
@@ -226,7 +264,10 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
-        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
+        df_hits["animal"] = df_hits.apply(
+            lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+            axis=1
+        )
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         return df_hits
@@ -268,7 +309,10 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
-        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
+        df_hits["animal"] = df_hits.apply(
+            lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+            axis=1
+        )
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         return df_hits
@@ -331,7 +375,10 @@ class VectorDB:
         df_join["labels"] = df_join["labels"].fillna("").apply(list)
         df_join["types"] = df_join["types"].fillna("").apply(list)
         df_join["title"] = df_join["title"].fillna("")
-        df_join["animal"] = df_join.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
+        df_join["animal"] = df_join.apply(
+            lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+            axis=1
+        )
         df_join["labels_types_dict"] = df_join.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_join.drop(columns=["types"], inplace=True)
         return df_join
@@ -366,7 +413,10 @@ class VectorDB:
         df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
         df_hits["title"] = df_hits["title"].fillna("")
         df_hits["types"] = df_hits["types"].fillna("").apply(list)
-        df_hits["animal"] = df_hits.apply(lambda row: row["labels"][0] if "relevant" in row["types"] else None, axis=1)
+        df_hits["animal"] = df_hits.apply(
+            lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+            axis=1
+        )
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
         print(df_hits["labels_types_dict"])
@@ -400,11 +450,11 @@ class VectorDB:
             return zip_path
 
 
-    def create_hilts_data(self, dirc) -> str:
+    def create_hilts_data(self) -> str:
         result, column_names = self.labelsdb.create_labeled_data()
         df = pd.DataFrame(result, columns=column_names)
         # df.to_csv(f"data/{dirc}/labeled.csv")
-        original_df = pd.read_csv(f"data/{dirc}/current_sample_training.csv")
+        original_df = pd.read_csv(self.csvpath)
         original_df = original_df.set_index("image_path")
         cols_to_use = df.columns.difference(original_df.columns)
         # join both
@@ -412,5 +462,21 @@ class VectorDB:
         original_df["relevant_"] = np.where(original_df["relevant"] == "not animal origin", 0,1)
         original_df["relevant_"] = np.where(original_df["relevant"].isnull(), None, original_df["relevant_"])
         original_df["label"] = np.where(original_df["relevant_"].isnull(), original_df["label"], original_df["relevant_"])
+        original_df["animal"] = original_df["relevant"]
+
+        original_df.drop(columns=["relevant_", "relevant"], inplace=True)
         original_df = original_df.reset_index()
-        original_df.to_csv(f"data/{dirc}/hilts_data.csv", index=False)
+        original_df.to_csv(self.hilts_train, index=False)
+
+        ## STATS LOGS
+        if os.path.exists(self.hilts_path):
+            with open(self.hilts_path, "r") as file:
+                hilts_data = json.load(file)
+            for image_path in hilts_data.keys():
+                animal_label = original_df[original_df["image_path"] == image_path]["animal"].values
+                if len(animal_label) > 0:
+                    hilts_data[image_path]["human_label"] = animal_label[0]
+
+            with open(self.hilts_path, "w") as file:
+                json.dump(hilts_data, file)
+

@@ -348,7 +348,7 @@ export async function createLtsConfig(
   return responseMessage;
 }
 
-export async function loadCSV(csv: any, ProjectId: string) {
+export async function loadCSV(csv: any, ProjectId: string, datatype: string) {
   const url = `${API_URL}/load/csv_data`;
   let responseMessage = "";
 
@@ -360,6 +360,7 @@ export async function loadCSV(csv: any, ProjectId: string) {
     const formData = new FormData();
     formData.append("file", blob, "filename.csv");
     formData.append("projectId", ProjectId);
+    formData.append("datatype", datatype);
 
     // Send the FormData using fetch
     const response = await fetch(url, {

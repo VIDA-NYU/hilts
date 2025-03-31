@@ -97,17 +97,27 @@ class BertFineTuner:
             'f1': f1
         }
 
-    def train_data(self, df, still_unbalenced, state_path):
+    def compute_metrics_from_predictions(self, labels, preds):
+        accuracy = accuracy_score(labels, preds)
+        precision = precision_score(labels, preds)
+        recall = recall_score(labels, preds)
+        f1 = f1_score(labels, preds)
+
+        return {
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1': f1
+        }
+
+    def train_data(self, df, still_unbalanced, state_path):
+        print(f"using cuda: {torch.cuda.is_available()}")
         early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir=state_path, project_id=self.project_id)
 
         tokenized_data, data_collator = self.create_dataset(df, self.test_data)
 
-        import os
-
         # Ensure the directories exist
-        log_dir_path = f"{state_path}log"
-
-        # Create the directory if it doesn't exist
+        log_dir_path = f"{state_path}/log"
         os.makedirs(log_dir_path, exist_ok=True)
 
         # Define training arguments
@@ -118,7 +128,7 @@ class BertFineTuner:
             metric_for_best_model="eval_f1",
             per_device_train_batch_size=32,
             per_device_eval_batch_size=32,
-            num_train_epochs=20,
+            num_train_epochs=10,  # TODO
             learning_rate=self.learning_rate,
             weight_decay=self.weight_decay,
             save_total_limit=2,
@@ -127,11 +137,11 @@ class BertFineTuner:
             no_cuda=True,
             push_to_hub=False,
             logging_dir="./logs",
-            load_best_model_at_end=True
+            load_best_model_at_end=True,
         )
-        if still_unbalenced:
+
+        if still_unbalanced:
             print(f"using modified loss function")
-            print(f"using device: {self.device}")
             # Create a Trainer
             trainer = MyTrainer(
                 model=self.model,
@@ -140,15 +150,33 @@ class BertFineTuner:
                 compute_metrics=BertFineTuner.compute_metrics,
                 train_dataset=tokenized_data["train"],
                 eval_dataset=tokenized_data["val"],
-                callbacks=[early_stopping_callback]
+                callbacks=[early_stopping_callback],
             )
 
             # Fine-tune the model
             trainer.train()
-            results = trainer.evaluate()
+            results_eval = trainer.evaluate()
+
+            # Perform inference on test.csv if it exists
+            results_test = None
+            if os.path.exists(f"data/{self.project_id}/test.csv"):
+                print(f"Performing inference on test.csv for project {self.project_id}")
+                test = pd.read_csv(f"data/{self.project_id}/test.csv")
+                test_dataset = self.create_test_dataset(test)
+
+                # Perform inference
+                predictions = trainer.predict(test_dataset["test"])
+
+                # Compute metrics manually
+                labels = test["label"].values  # Assuming the test.csv has a 'label' column
+                preds = predictions.predictions.argmax(-1)
+                results_test = self.compute_metrics_from_predictions(labels, preds)
+
+                print("Test Results:", results_test)
+
             self.trainer = trainer
 
-            return results, self.trainer
+            return results_eval, results_test, self.trainer
         else:
             # Create a Trainer
             trainer = Trainer(
@@ -158,43 +186,88 @@ class BertFineTuner:
                 compute_metrics=BertFineTuner.compute_metrics,
                 train_dataset=tokenized_data["train"],
                 eval_dataset=tokenized_data["val"],
-                callbacks=[early_stopping_callback]
+                callbacks=[early_stopping_callback],
             )
 
             # Fine-tune the model
             trainer.train()
-            results = trainer.evaluate()
+            results_eval = trainer.evaluate()
+
+            # Perform inference on test.csv if it exists
+            results_test = None
+            if os.path.exists(f"data/{self.project_id}/test.csv"):
+                print(f"Performing inference on test.csv for project {self.project_id}")
+                test = pd.read_csv(f"data/{self.project_id}/test.csv")
+                test_dataset = self.create_test_dataset(test)
+
+                # Perform inference
+                predictions = trainer.predict(test_dataset["test"])
+
+                # Compute metrics manually
+                labels = test["label"].values  # Assuming the test.csv has a 'label' column
+                preds = predictions.predictions.argmax(-1)
+                results_test = self.compute_metrics_from_predictions(labels, preds)
+
+                print("Test Results:", results_test)
 
             self.trainer = trainer
 
-            return results, self.trainer
+            return results_eval, results_test, self.trainer
 
 
     def get_inference(self, df: pd.DataFrame) -> torch.Tensor:
+        """
+        Perform inference on the given DataFrame using the GPU (if available).
+
+        Args:
+            df (pd.DataFrame): DataFrame containing the 'title' column for inference
+
+        Returns:
+            torch.Tensor: Tensor of predicted labels
+
+        Raises:
+            ValueError: If trainer is not initialized or DataFrame is empty/invalid
+        """
+        if self.trainer is None:
+            raise ValueError("Trainer is not initialized. Please train the model first.")
+
+        if df.empty:
+            raise ValueError("Input DataFrame is empty.")
+
+        if 'title' not in df.columns:
+            raise ValueError("Input DataFrame must contain a 'title' column.")
+
         predicted_labels = []
         chunk_size = 10000
         total_records = len(df)
         start_index = 0
+        total_chunks = (total_records + chunk_size - 1) // chunk_size
 
-        while start_index < total_records:
-            end_index = min(start_index + chunk_size, total_records)
-            chunk = df[start_index:end_index]
-            test_dataset = self.create_test_dataset(chunk)
-            # data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
-            # data_loader = DataLoader(test_dataset["test"], batch_size=batch_size, collate_fn=data_collator)
-            predictions = self.trainer.predict(test_dataset["test"])  # Make predictions on the current batch
-            prediction_scores = predictions.predictions
-            batch_predicted_labels = torch.argmax(torch.tensor(prediction_scores), dim=1)
+        print(f"Starting inference on {total_records} records in {total_chunks} chunks...")
 
-            predicted_labels.append(batch_predicted_labels)
+        try:
+            while start_index < total_records:
+                end_index = min(start_index + chunk_size, total_records)
+                chunk = df[start_index:end_index]
+                current_chunk = (start_index // chunk_size) + 1
 
-            start_index = end_index
+                print(f"Processing chunk {current_chunk}/{total_chunks} ({start_index+1}-{end_index} records)...")
+                test_dataset = self.create_test_dataset(chunk)
 
+                # Perform inference using the trainer
+                predictions = self.trainer.predict(test_dataset["test"])
+                prediction_scores = torch.tensor(predictions.predictions, device=self.device)
+                batch_predicted_labels = torch.argmax(prediction_scores, dim=1)
 
-        # Concatenate the predicted labels from all batches
-        predicted_labels = torch.cat(predicted_labels)
+                predicted_labels.append(batch_predicted_labels)
+                start_index = end_index
 
-        return predicted_labels
+            # Concatenate the predicted labels from all batches
+            predicted_labels = torch.cat(predicted_labels).to(self.device)
+            return predicted_labels
+
+        except Exception as e:
+            raise RuntimeError(f"Error during inference: {str(e)}")
 
     def save_model(self, path: str):
         self.trainer.save_model(path)
@@ -221,16 +294,6 @@ class MyTrainer(Trainer):
             optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
             preprocess_logits_for_metrics: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None):
         super().__init__(model, args, data_collator, train_dataset, eval_dataset, tokenizer, model_init, compute_metrics, callbacks, optimizers, preprocess_logits_for_metrics)
-
-    # def compute_loss(self, model, inputs, return_outputs=False):
-    #     labels = inputs.pop("labels")
-
-    #     # forward pass
-    #     outputs = model(**inputs)
-    #     logits = outputs.get("logits")
-    #     loss_fct = nn.CrossEntropyLoss(weight=torch.tensor([0.3, 0.7], device=model.device))
-    #     loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
-    #     return (loss, outputs) if return_outputs else loss
 
     def compute_loss(self, model, inputs, return_outputs=False):
         # Pop labels from inputs
@@ -276,7 +339,7 @@ class EarlyStoppingCallback(TrainerCallback):
             for log_entry in reversed(state.log_history):
                 if 'eval_loss' in log_entry:
                     current_loss = log_entry['eval_loss']
-            if current_loss is not None:  # Check if loss is available in log history
+            if current_loss is not None:
                 if current_loss < self.best_loss:
                     self.best_loss = current_loss
                     self.wait = 0
@@ -284,7 +347,18 @@ class EarlyStoppingCallback(TrainerCallback):
                     self.wait += 1
                     if self.wait >= self.patience:
                         control.should_training_stop = True
-                # Save logs
             if self.log_dir:
-                with open(f"{self.log_dir}log/epoch_{state.epoch}.json", "w") as f:
-                    json.dump(state.log_history, f, indent=4)
+                eval_logs = [
+                {
+                    "epoch": log_entry.get("epoch"),
+                    "eval_accuracy": log_entry.get("eval_accuracy"),
+                    "eval_f1": log_entry.get("eval_f1"),
+                    "eval_precision": log_entry.get("eval_precision"),
+                    "eval_recall": log_entry.get("eval_recall"),
+                    "eval_loss": log_entry.get("eval_loss"),
+                }
+                for log_entry in state.log_history
+                if any(key.startswith("eval_") for key in log_entry)
+            ]
+                with open(f"{self.log_dir}/log/epoch.json", "w") as f:
+                    json.dump(eval_logs, f, indent=4)

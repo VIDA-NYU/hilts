@@ -76,7 +76,7 @@ class TextClustering:
         from .lda import LDATopicModel  # Import here to avoid circular imports
         lda_topic_model = LDATopicModel(num_topics=int(self.n_cluster))
         topics = lda_topic_model.fit_transform(self.data[self.text_column].to_list())
-        self.data["label_cluster"] = int(topics)
+        self.data["label_cluster"] = [int(topic) for topic in topics]
         self.save_csv(self.filename, self.data)
         print("LDA created")
         return self.data

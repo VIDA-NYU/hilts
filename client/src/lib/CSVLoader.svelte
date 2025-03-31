@@ -1,7 +1,7 @@
 <script lang=ts>
   import * as api from "./Api";
   import Modal from "./Modal.svelte";
-  import { projectName, runningState } from "./stores";
+  import { projectName } from "./stores";
   export let dataToCSV = [];
   import { navigate } from "svelte-routing";
 
@@ -9,10 +9,14 @@
   export let allowedFileExtensions = ["csv"];
 
   let isRunning = false;
+  let response;
 
-  runningState.subscribe((run) => {
-    isRunning = run;
-  });
+  async function getStatus() {
+    response = await api.getStatus();
+    if (response) {
+      isRunning = response.lts_status;
+    }
+  }
 
   let projectMessage="";
 
@@ -21,12 +25,15 @@
 
   // Variables for form and responses
   let uploader;
+  let testUploader;
   let writingText = ""; // Variable to bind the writing text
   let uploading = false; // Add a variable to track the uploading state
+  let uploadingTest = false; // Add a variable to track the test uploading state
   let saving = false;
   let responseMessage = "";
   let responseMessagePrompt = "";
   let responseMessageSave = "";
+  let responseMessageTest = "";
 
   // LTS Generator parameters (added for the modal)
   let task_prompt = ""
@@ -43,6 +50,8 @@
   let bugetValue = 1000;
   let cluster = "lda"
   let projectId = "";
+  let humanLabels = 20;
+  // let stop = 2;
 
   projectName.subscribe((name) => {
     projectId = name;
@@ -51,31 +60,32 @@
 
 
   let showModal = false; // Reactive variable to control modal visibility
-  let argsDict = {};
 
-  // // Function to update argsDict with selected option and custom value
+  interface ArgsDict {
+    [key: string]: any;  // Allow any key with a string type and any value
+  }
+  let argsDict: ArgsDict = {}; // Initialize as an empty object
+
+
   function updateArgs() {
-    const variables = [
-    "task_prompt",
-    "sampling",
-    "sample_size",
-    "model_finetune",
-    "model_init",
-    "labeling",
-    "metric",
-    "validation_size",
-    "cluster_size",
-    "budget",
-    "baseline",
-    "bugetValue",
-    "cluster"
-  ];
-
-  // Loop through the array of variable names
-  variables.forEach(variable => {
-    // Use eval to get the value of the variable by its name
-    argsDict[variable] = eval(variable);
-  });
+    argsDict = {
+      task_prompt,
+      sampling,
+      sample_size,
+      model_finetune,
+      model_init,
+      labeling,
+      metric,
+      validation_size,
+      cluster_size,
+      budget,
+      baseline,
+      bugetValue,
+      cluster,
+      humanLabels,
+      // stop,
+    };
+    console.log("Updated argsDict:", argsDict); // Debugging to verify updates
   }
 
   // Handle file upload
@@ -87,12 +97,28 @@
     uploading = false; // Reset uploading state
   }
 
+  async function uploadTestFile(event) {
+    event.preventDefault();
+    const file = testUploader.files[0];
+    uploadingTest = true; // Set test uploading state to true
+    await onUploadTest(file);
+    uploadingTest = false; // Reset test uploading state
+  }
+
   // Handle the file upload process
   async function onUpload(file) {
     try {
-      responseMessage = await api.loadCSV(file, projectId);
+      responseMessage = await api.loadCSV(file, projectId, "train");
     } catch (error) {
       responseMessage = `Error loading CSV data: ${error.message}`;
+    }
+  }
+
+  async function onUploadTest(file) {
+    try {
+      responseMessageTest = await api.loadCSV(file, projectId, "test");
+    } catch (error) {
+      responseMessageTest = `Error loading Test CSV data: ${error.message}`;
     }
   }
 
@@ -100,8 +126,8 @@
   async function createLtsConfig() {
     updateArgs()
     saving = true;
+    argsDict["model_init"] = argsDict["model_finetune"];
     try {
-      argsDict["model_init"] = argsDict["model_finetune"];
       const response = await api.createLtsConfig(projectId, argsDict); // Pass the entered project ID and argsDict to the API
       responseMessageSave = "Project Saved!";
       console.log(response);
@@ -120,18 +146,18 @@
   }
 
   async function confirmName(new_name) {
-    projectName.update((projectId) => {
-      projectId = new_name;
-      return projectId;
-    })
+    projectName.update(() => {
+      return new_name;
+    });
 
     try {
-      projectMessage = await api.setLabelsDb(projectId);
+      projectMessage = await api.setLabelsDb(new_name);
+      await getStatus(); // Check the status after setting the project name
     } catch (error) {
       projectMessage = `Error setting labels db: ${error.message}`;
     }
 
-    return projectId;
+    return new_name;
   }
 
 
@@ -154,7 +180,7 @@
     <div class="alert alert-primary position-absolute bottom-50 end-50" role="alert">
       <h1>
         <span class="fa fa-exclamation-triangle" />
-        Project {projectId} running
+        Project running
       </h1>
     </div>
     {/if}
@@ -237,6 +263,41 @@
       {/if}
     </div>
   </div>
+
+  <!-- Add this below the existing "Load Data Section" -->
+  <div class="py-4">
+    <label for="testData">Select Test Dataset</label>
+    <input
+      id="testData"
+      bind:this={testUploader}
+      type="file"
+      class="form-control"
+      style="max-width:400px"
+    />
+    <div class="pt-2">
+      <button class="btn btn-primary"
+        on:click={uploadTestFile}
+        disabled={isRunning}
+      >
+        <span class="fa fa-download mr-2" />
+        Load Test File
+      </button>
+    </div>
+
+    <div class="mt-2">
+      {#if uploadingTest}
+        <span>
+          <i class="fa fa-spinner fa-spin" aria-hidden="true" />
+          Loading Test Set...
+        </span>
+      {:else if responseMessageTest}
+        <div>
+          <p>{responseMessageTest}</p>
+        </div>
+      {/if}
+    </div>
+  </div>
+
   <!-- Start LTS Data Generator Button -->
   <div class="py-4">
     <label for="seetings">LTS Settings</label>
@@ -329,6 +390,15 @@
           > -->
         <!-- </select> -->
       </div>
+      <!-- <div class="col-6">
+        <label for="stop">Stop</label>
+        <input
+          id="stop"
+          type="number"
+          class="form-control"
+          bind:value={stop}
+        />
+      </div> -->
       <div class="col-6">
         <label for="labeling">LLM Labeling</label>
         <select id="labeling" class="form-control" bind:value={labeling}>
@@ -396,6 +466,15 @@
           bind:value={cluster_size}
         />
       </div>
+      </div>
+      <div class="col-6">
+        <label for="human_labels">Minimum number of samples to correct</label>
+        <input
+          id="human_labels"
+          type="number"
+          class="form-control"
+          bind:value={humanLabels}
+        />
       </div>
     </div>
   </div>

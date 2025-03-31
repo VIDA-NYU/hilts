@@ -3,7 +3,7 @@ import nltk
 
 print(nltk.data.path)
 from nltk.tokenize import word_tokenize
-# nltk.download('punkt_tab')
+nltk.download('punkt_tab')
 # nltk.download('punkt')
 
 

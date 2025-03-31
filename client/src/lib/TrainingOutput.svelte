@@ -3,12 +3,10 @@
   import { onMount, onDestroy } from "svelte";
   import { io } from "socket.io-client";
   // import {createChart} from "./cards/trainingChart"
-  import { projectName, runningState } from "./stores";
+  import { projectName } from "./stores";
   import { navigate } from "svelte-routing";
   import * as d3 from "d3";
 
-  // import { socket, initializeSocket } from './stores';
-  // import { get } from 'svelte/store';
   let svg;
   const width = 600;
   const height = 400;
@@ -44,10 +42,6 @@
 
   projectName.subscribe((name) => {
     projectId = name;
-  });
-
-  runningState.subscribe((run) => {
-    isRunning = run;
   });
 
 
@@ -199,9 +193,6 @@
 
       $: {
         if (loop !== previousLoop) {
-          // epochsHistory = [...epochsHistory, epochs];
-          // Reset everything for the new loop
-          // epochs = []; // Clear previous epochs
           states = []; // Clear previous states
           currentStep = 0; // Reset to first step
           console.log(`Training started or restarted for loop ${loop}!`);
@@ -210,14 +201,10 @@
       previousLoop = loop;
 
       isRunning = status.lts_status;
-      runningState.update(value => isRunning);
+
+      checkLabels = status.lts_state === "User Labeling";
 
 
-      $: {if (isTrainingInProgress) {
-        isTrainingInProgress = isRunning;
-        checkLabels = isTrainingInProgress === checkLabels;
-      }
-     };
       if (status.lts_state && !states.includes(status.lts_state)) {
         states = [...states, status.lts_state];
         changeStep();
@@ -238,13 +225,14 @@
         ) {
           updateChartData(status["stats"]["training_metrics"]);
           steps_training = status["stats"]["training_metrics"]["step"];
-          steps_training = steps_training.slice(-5)
+          if (steps_training.length > 5){
+            steps_training = steps_training.slice(-5)
+          }
           createChart(); // Re-create the chart with updated data
         }
       }
     } else {
       isRunning = false;
-      runningState.update(value => isRunning);
       isTraining = false;
       isTrainingInProgress = false;
     }
@@ -262,7 +250,7 @@
     getStatus();
     interval = setInterval(() => {
       getStatus();
-    }, 6000);
+    }, 60);
   });
 
   onDestroy(() => {
@@ -288,7 +276,7 @@
 <div class="container-fluid">
   <div class="row m-3">
     <div class="col-2">
-      <div class="card m-3">
+      <div class="card">
         <div class="card-header bg-primary text-white">LTS Status:
             {isRunning ? "Running" : "Not running"}</div>
       </div>
@@ -324,7 +312,16 @@
           </div>
         </div>
       {/if}
-
+  </div>
+  <div class="col-2">
+    <button
+        class="btn btn-outline-primary m-2"
+        on:click={(() => navigate("/search/random?q="))}
+        disabled={!checkLabels}
+      >
+      <span class="fa fa-tag" />
+      Check Labels
+    </button>
   </div>
     {#if isTraining || Object.entries(epochs).length > 0}
       <div class="col-4">
@@ -385,14 +382,6 @@
       <div class="col-4">
         <div class="card m-3">
           <div class="card-header bg-primary text-white justify-content-between align-items-center">Model Metrics
-            <button
-              class="btn btn-light"
-              on:click={(() => navigate("/search/random?q="))}
-              disabled={!checkLabels}
-            >
-            <span class="fa fa-tag" />
-            Check Labels
-        </button>
           </div>
         </div>
         <svg id="chart"></svg>

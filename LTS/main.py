@@ -25,13 +25,12 @@ def initialize_LTS(project_id, state_path, label_hilts):
     prompt = args.get("task_prompt")
     budget_value = int(args.get("bugetValue"))
     model_finetune = args.get("model_finetune")
-    model_init = args.get("model_init")
+    # model_init = args.get("model_init")
 
     # Load data
     preprocessor = TextPreprocessor()
-    with open(state_path + "state.txt", "w") as f:
-        f.write("Clustering Data")
-    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, project_id)
+
+    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, state_path)
 
     # Set up labeling and validation
     labeler = Labeling(label_model=labeling, prompt=prompt)
@@ -39,10 +38,10 @@ def initialize_LTS(project_id, state_path, label_hilts):
     validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_id, state_path)
 
     # Initialize fine-tuner and sampler
-    with open(state_path + "state.txt", "w") as f:
+    with open(state_path + "/state.txt", "w") as f:
         f.write("Loading Base Model")
-    if label_hilts == "file":
-        model_finetune = model_init
+    # if label_hilts == "file":
+    #     model_finetune = model_init
     trainer = initialize_trainer("text", model_finetune, validation, project_id=project_id)
 
     sampler = initialize_sampler(sampling, cluster_size, project_id)

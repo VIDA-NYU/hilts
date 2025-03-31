@@ -7,16 +7,18 @@ from .fine_tune import BertFineTuner
 from .thompson_sampling import ThompsonSampler
 from .clustering import TextClustering
 
-def create_clustered_data(preprocessor, algorithm, cluster_size, project_id):
+def create_clustered_data(preprocessor, algorithm, cluster_size, project_path):
     """
     Load data from a CSV file and apply LDA if necessary.
     Returns the processed DataFrame.
     """
     try:
-        data = pd.read_csv("data/" + project_id + "/" + "filename" + "_cluster_data.csv")
+        data = pd.read_csv(project_path + "/filename" + "_cluster_data.csv")
         print("Using data saved on disk")
     except FileNotFoundError:
-        data = pd.read_csv("data/" + project_id + "/" + "filename" + ".csv")
+        with open(project_path + "/state.txt", "w") as f:
+            f.write("Clustering Data")
+        data = pd.read_csv(project_path + "/filename" + ".csv")
         data = preprocessor.preprocess_df(data)
 
         print("Creating LDA")
@@ -80,7 +82,7 @@ def prepare_validation(validation_path, validation_size, data, labeler, preproce
         validation = preprocessor.preprocess_df(validation)
         save_validation_data(validation, f"data/{id}/validation.csv")
     else:
-        with open(state_path + "state.txt", "w") as f:
+        with open(state_path + "/state.txt", "w") as f:
             f.write("Creating Validation")
         sampler = RandomSampler(data['label_cluster'].nunique(), id)
         sample_validation, _ = sampler.create_validation_data(data, validation_size)
