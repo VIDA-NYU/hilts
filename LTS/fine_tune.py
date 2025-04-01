@@ -9,10 +9,12 @@ from torch.utils.data import IterableDataset
 import pandas as pd
 from torch import nn
 import os
+import json
+import numpy as np
 
 class BertFineTuner:
-    def __init__(self, model_name: Optional[str], training_data: Optional[pd.DataFrame], test_data: Optional[pd.DataFrame],weight_decay= 0.01, learning_rate=2e-5, dropout=0.2, project_id="default"):
-        self.project_id = project_id
+    def __init__(self, model_name: Optional[str], training_data: Optional[pd.DataFrame], test_data: Optional[pd.DataFrame], weight_decay=0.01, learning_rate=2e-5, dropout=0.2, project_path=None):
+        self.project_path = project_path
         self.base_model = model_name
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -112,7 +114,7 @@ class BertFineTuner:
 
     def train_data(self, df, still_unbalanced, state_path):
         print(f"using cuda: {torch.cuda.is_available()}")
-        early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir=state_path, project_id=self.project_id)
+        early_stopping_callback = EarlyStoppingCallback(patience=5, log_dir=state_path)
 
         tokenized_data, data_collator = self.create_dataset(df, self.test_data)
 
@@ -159,9 +161,9 @@ class BertFineTuner:
 
             # Perform inference on test.csv if it exists
             results_test = None
-            if os.path.exists(f"data/{self.project_id}/test.csv"):
-                print(f"Performing inference on test.csv for project {self.project_id}")
-                test = pd.read_csv(f"data/{self.project_id}/test.csv")
+            if os.path.exists(f"{self.project_path}/test.csv"):
+                print(f"Performing inference on test.csv")
+                test = pd.read_csv(f"{self.project_path}/test.csv")
                 test_dataset = self.create_test_dataset(test)
 
                 # Perform inference
@@ -195,9 +197,9 @@ class BertFineTuner:
 
             # Perform inference on test.csv if it exists
             results_test = None
-            if os.path.exists(f"data/{self.project_id}/test.csv"):
-                print(f"Performing inference on test.csv for project {self.project_id}")
-                test = pd.read_csv(f"data/{self.project_id}/test.csv")
+            if os.path.exists(f"{self.project_path}/test.csv"):
+                print(f"Performing inference on test.csv")
+                test = pd.read_csv(f"{self.project_path}/test.csv")
                 test_dataset = self.create_test_dataset(test)
 
                 # Perform inference
@@ -215,59 +217,82 @@ class BertFineTuner:
             return results_eval, results_test, self.trainer
 
 
-    def get_inference(self, df: pd.DataFrame) -> torch.Tensor:
+    def get_inference(self, df):
         """
-        Perform inference on the given DataFrame using the GPU (if available).
+        Performs inference on a DataFrame and returns predicted labels as a tensor.
 
         Args:
-            df (pd.DataFrame): DataFrame containing the 'title' column for inference
+            df (pd.DataFrame): DataFrame containing the data to perform inference on.
 
         Returns:
-            torch.Tensor: Tensor of predicted labels
+            np.ndarray: Array of predicted labels.
 
         Raises:
-            ValueError: If trainer is not initialized or DataFrame is empty/invalid
+            ValueError: If the trainer is not initialized or if the DataFrame is empty.
         """
-        if self.trainer is None:
-            raise ValueError("Trainer is not initialized. Please train the model first.")
+        if not self.trainer:
+            raise ValueError("Trainer not initialized. Please train the model first.")
 
         if df.empty:
-            raise ValueError("Input DataFrame is empty.")
+            raise ValueError("DataFrame is empty.")
 
         if 'title' not in df.columns:
-            raise ValueError("Input DataFrame must contain a 'title' column.")
-
-        predicted_labels = []
-        chunk_size = 10000
-        total_records = len(df)
-        start_index = 0
-        total_chunks = (total_records + chunk_size - 1) // chunk_size
-
-        print(f"Starting inference on {total_records} records in {total_chunks} chunks...")
+            raise ValueError("DataFrame must contain a 'title' column.")
 
         try:
-            while start_index < total_records:
-                end_index = min(start_index + chunk_size, total_records)
-                chunk = df[start_index:end_index]
-                current_chunk = (start_index // chunk_size) + 1
+            # Process data in chunks to avoid memory issues
+            chunk_size = 1000
+            total_chunks = (len(df) + chunk_size - 1) // chunk_size
+            print(f"Starting inference on {len(df)} records in {total_chunks} chunks...")
 
-                print(f"Processing chunk {current_chunk}/{total_chunks} ({start_index+1}-{end_index} records)...")
+            # Initialize progress file
+            inference_progress_path = f"{self.project_path}/inference_progress.json"
+            progress_data = {
+                "total_chunks": total_chunks,
+                "current_chunk": 0,
+                "total_records": len(df),
+                "processed_records": 0
+            }
+            with open(inference_progress_path, "w") as f:
+                json.dump(progress_data, f, indent=4)
+
+            all_predictions = []
+            for i in range(total_chunks):
+                start_idx = i * chunk_size
+                end_idx = min((i + 1) * chunk_size, len(df))
+                chunk = df.iloc[start_idx:end_idx]
+                print(f"Processing chunk {i+1}/{total_chunks} ({start_idx+1}-{end_idx} records)...")
+
+                # Create dataset for the chunk
                 test_dataset = self.create_test_dataset(chunk)
 
-                # Perform inference using the trainer
+                # Get predictions
                 predictions = self.trainer.predict(test_dataset["test"])
-                prediction_scores = torch.tensor(predictions.predictions, device=self.device)
-                batch_predicted_labels = torch.argmax(prediction_scores, dim=1)
+                # Move tensor to CPU before converting to numpy array
+                chunk_predictions = predictions.predictions.argmax(-1)
+                if torch.is_tensor(chunk_predictions):  # Ensure it's a tensor
+                    chunk_predictions = chunk_predictions.cpu().numpy()
+                all_predictions.extend(chunk_predictions)
 
-                predicted_labels.append(batch_predicted_labels)
-                start_index = end_index
+                # Update progress
+                progress_data.update({
+                    "current_chunk": i + 1,
+                    "processed_records": end_idx
+                })
+                with open(inference_progress_path, "w") as f:
+                    json.dump(progress_data, f, indent=4)
 
-            # Concatenate the predicted labels from all batches
-            predicted_labels = torch.cat(predicted_labels).to(self.device)
-            return predicted_labels
+            # Remove progress file after completion
+            if os.path.exists(inference_progress_path):
+                os.remove(inference_progress_path)
+
+            return all_predictions
 
         except Exception as e:
-            raise RuntimeError(f"Error during inference: {str(e)}")
+            # Remove progress file on error
+            if os.path.exists(inference_progress_path):
+                os.remove(inference_progress_path)
+            raise e
 
     def save_model(self, path: str):
         self.trainer.save_model(path)
@@ -323,11 +348,9 @@ class MyTrainer(Trainer):
 
 
 from transformers import TrainerCallback, Trainer
-import json
 
 class EarlyStoppingCallback(TrainerCallback):
-    def __init__(self, patience=5, log_dir=None, project_id="default"):
-        self.project_id = project_id
+    def __init__(self, patience=5, log_dir=None):
         self.patience = patience
         self.best_loss = float('inf')
         self.wait = 0
@@ -349,16 +372,17 @@ class EarlyStoppingCallback(TrainerCallback):
                         control.should_training_stop = True
             if self.log_dir:
                 eval_logs = [
-                {
-                    "epoch": log_entry.get("epoch"),
-                    "eval_accuracy": log_entry.get("eval_accuracy"),
-                    "eval_f1": log_entry.get("eval_f1"),
-                    "eval_precision": log_entry.get("eval_precision"),
-                    "eval_recall": log_entry.get("eval_recall"),
-                    "eval_loss": log_entry.get("eval_loss"),
-                }
-                for log_entry in state.log_history
-                if any(key.startswith("eval_") for key in log_entry)
-            ]
-                with open(f"{self.log_dir}/log/epoch.json", "w") as f:
-                    json.dump(eval_logs, f, indent=4)
+                    {
+                        "epoch": log_entry.get("epoch"),
+                        "eval_accuracy": log_entry.get("eval_accuracy"),
+                        "eval_f1": log_entry.get("eval_f1"),
+                        "eval_precision": log_entry.get("eval_precision"),
+                        "eval_recall": log_entry.get("eval_recall"),
+                        "eval_loss": log_entry.get("eval_loss"),
+                    }
+                    for log_entry in state.log_history
+                    if any(key.startswith("eval_") for key in log_entry)
+                ]
+                if eval_logs:
+                    with open(f"{self.log_dir}/log/epoch.json", "w") as f:
+                        json.dump(eval_logs, f, indent=4)

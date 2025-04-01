@@ -5,7 +5,7 @@ from sklearn.mixture import GaussianMixture
 import os
 
 class TextClustering:
-    def __init__(self, data, text_column="title", n_cluster=5, algorithm="kmeans", project_id="default"):
+    def __init__(self, data, text_column="title", n_cluster=5, algorithm="kmeans", project_path="default"):
         """
         Initializes the clustering object with the dataset and the name of the text column.
         """
@@ -15,7 +15,7 @@ class TextClustering:
         self.X = None
         self.algorithm = algorithm
         self.n_cluster = n_cluster
-        self.project_id = project_id
+        self.project_path = project_path
         self.filename = "filename" + "_cluster_data"
 
     def preprocess_text(self):
@@ -97,9 +97,9 @@ class TextClustering:
             raise ValueError("Unknown algorithm. Please choose from 'agglo', 'kmeans', 'gmm' or 'lda'.")
 
     def save_csv(self, filename, data):
-        if os.path.exists(f"data/{self.project_id}/{filename}.csv"):
-            data_saved = pd.read_csv(f"data/{self.project_id}/{filename}.csv")
+        if os.path.exists(f"{self.project_path}/{filename}.csv"):
+            data_saved = pd.read_csv(f"{self.project_path}/{filename}.csv")
             data = pd.concat([data, data_saved])
-            data.to_csv(f"data/{self.project_id}/{filename}.csv", index=False)
+            data.to_csv(f"{self.project_path}/{filename}.csv", index=False)
         else:
-            data.to_csv(f"data/{self.project_id}/{filename}.csv", index=False)
+            data.to_csv(f"{self.project_path}/{filename}.csv", index=False)

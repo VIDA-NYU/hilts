@@ -17,21 +17,22 @@ class TextPreprocessor:
         return df
 
     def clean_text(self, text):
+        if not isinstance(text, str):
+            raise ValueError(f"Expected string input, got {type(text)}")
+
         try:
             text = text.lower()
             text = text.replace("\n", " ")
             # Remove \xa0 characters
             text = text.replace("\xa0", " ")
-
             text = text.replace("eBay", "")
-
             text = self.remove_weird_characters(text)
-
             text = self.remove_extra_whitespaces(text)
-        except Exception:
-            print(text)
-        return text
-
+            return text
+        except Exception as e:
+            print(f"Error cleaning text: {str(e)}")
+            print(f"Problematic text: {text[:100]}...")  # Print first 100 chars for debugging
+            return text  # Return original text if cleaning fails
 
     def remove_weird_characters(self, text):
         text = self.weird_chars_regex.sub('', text)

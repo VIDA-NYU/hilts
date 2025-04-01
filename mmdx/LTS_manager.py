@@ -19,16 +19,14 @@ class LTSManager:
         self.project_path = f"data/{self.project_id}"
         self.metrics_path = f"{self.project_path}/metrics.json"
         self.stop_path = f"{self.project_path}/stop.txt"
-        # self.label_hilts = args.get("labeling")
 
     def train_model(self, label_hilts):
-
         process_id = self.process.pid
-        state_path = f"{self.project_path}/{process_id}"
+        process_path = f"{self.project_path}/{process_id}"
 
         print(f"processid: {process_id}")
 
-        args, sampler, data, trainer, labeler = initialize_LTS(self.project_id, self.project_path, label_hilts)
+        args, sampler, data, trainer, labeler = initialize_LTS(self.project_path)
 
         budget = args.get("budget")
         budget_value = int(args.get("bugetValue"))
@@ -41,9 +39,9 @@ class LTSManager:
                 if os.path.exists(self.metrics_path):
                     result_json = self.get_metrics(self.project_path)
                     loop = max(result_json["step"]) + 1
-                with open(state_path + "/loop.txt", "w") as f:
+                with open(process_path + "/loop.txt", "w") as f:
                     f.write(str(loop))
-                log_path = f"{state_path}/log/"
+                log_path = f"{process_path}/log/"
                 self.remove_dirc(log_path)
                 if idx == 0 and label_hilts =="file":
                     label = label_hilts
@@ -56,7 +54,7 @@ class LTSManager:
                 #     # os.remove(self.stop_path)
                 #     print("Training stopped!")
                 #     return # End of LTS process
-                res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, self.project_id, self.project_path, state_path)
+                res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, self.project_path, process_path)
                 if len(res) == 0:
                     csvpath =f"data/{self.project_id}/current_sample_training.csv"
 
@@ -66,7 +64,7 @@ class LTSManager:
                         label_llm = ["animal origin" if label == 1 else "not animal origin" for label in df["label"].to_list()]
                         for path, labelllm in zip(image_paths, label_llm):
                             self.labeldb.add_label(image_path=path,label= labelllm, table="relevant")
-                        with open(self.project_path + "/state.txt", "w") as f:
+                        with open(os.path.join(self.project_path, "state.txt"), "w") as f:
                             f.write("User Labeling")
                     return
 
@@ -140,19 +138,25 @@ class LTSManager:
             "stats": {
                 "llm_labels": [],
                 "epochs": {},
-                "training_metrics": {}
+                "training_metrics": {},
+                "inference_progress": None
             }
         }
         loop = self.get_loop_idx(self.process_path)
         status["lts_status"] = self.process.is_alive()
         status["loop"] = loop
 
-
         metrics = self.get_metrics(self.project_path)
         epochs = self.get_epoch_logs(self.project_path, self.process_path, loop)
         labels = self.get_llm_labels(self.project_path)
 
         status["lts_state"] = self.get_LTS_state(self.project_path)
+
+        # Get inference progress if available
+        inference_progress_path = f"{self.project_path}/inference_progress.json"
+        if os.path.exists(inference_progress_path):
+            with open(inference_progress_path, "r") as f:
+                status["stats"]["inference_progress"] = json.load(f)
 
         if labels:
             status["stats"]["llm_labels"].append(labels)
@@ -166,7 +170,6 @@ class LTSManager:
 
         return status
 
-
     def stop_LTS(self):
         p_process = f"data/{self.project_id}/{self.process_id}/stop.txt"
         with open(p_process, "w") as f:
@@ -175,90 +178,79 @@ class LTSManager:
 
     @staticmethod
     def get_LTS_state(project_path):
-        # print(project_path + "/state.txt")
-        if os.path.exists(project_path + "/state.txt"):
-            # print("openning state")
-            with open(project_path + "/state.txt", "r") as file:
-                state = file.read()
-                return state
-        else:
-            # print("No state available")
-            return None
+        state_file = os.path.join(project_path, "state.txt")
+        if os.path.exists(state_file):
+            try:
+                with open(state_file, "r") as file:
+                    return file.read().strip()
+            except Exception as e:
+                print(f"Error reading state file: {e}")
+                return None
+        return None
 
     @staticmethod
-    def get_loop_idx(state_path):
-        if os.path.exists(state_path + "/loop.txt"):
-            with open(state_path + "/loop.txt", "r") as file:
-                idx = file.read()
-                return idx
-        else:
-            # print("No loop available")
-            return -1
+    def get_loop_idx(process_path):
+        loop_file = os.path.join(process_path, "loop.txt")
+        if os.path.exists(loop_file):
+            with open(loop_file, "r") as file:
+                return file.read()
+        return -1
 
     @staticmethod
     def get_metrics(project_path):
-        if os.path.exists(project_path +  "/metrics.json"):
-            with open(project_path +  "/metrics.json", "r") as json_file:
-                metrics = json.load(json_file)
-            return metrics
-        else:
-            return None
+        metrics_file = os.path.join(project_path, "metrics.json")
+        if os.path.exists(metrics_file):
+            with open(metrics_file, "r") as json_file:
+                return json.load(json_file)
+        return None
 
     @staticmethod
     def get_llm_labels(project_path):
-        count_1 = 0
-        count_0 = 0
-        if os.path.exists(project_path + "/current_sample_training.csv"):
-            df = pd.read_csv(project_path + "/current_sample_training.csv")
-            pos = df[df["label"] == 1]
-            neg = df[df["label"] == 0]
-            if not pos.empty:
-                count_1 = len(pos)
-            if not neg.empty:
-                count_0 = len(neg)
-
-            labels = {"1": count_1,
-                    "0": count_0}
-            return labels
-        else:
-            return None
+        try:
+            labels_file = os.path.join(project_path, "current_sample_training.csv")
+            if os.path.exists(labels_file):
+                df = pd.read_csv(labels_file)
+                count_1 = len(df[df["label"] == 1]) if not df.empty else 0
+                count_0 = len(df[df["label"] == 0]) if not df.empty else 0
+                return {"1": count_1, "0": count_0}
+        except Exception as e:
+            print(f"Error reading labels: {e}")
+        return None
 
 
     @staticmethod
     def get_epoch_logs(project_path, process_path, loop):
-        # List all files in the directory
-        log_path = process_path+"/log"
+        log_path = os.path.join(process_path, "log")
         if os.path.exists(log_path):
-            if loop == 1 and os.path.exists(f"{project_path}/epoch_training.json"):
-                os.remove(f"{project_path}/epoch_training.json")
-            if os.path.exists(log_path+"/epoch.json"):
-                with open(log_path+"/epoch.json", 'r') as file:
+            epoch_file = os.path.join(log_path, "epoch.json")
+            if loop == 1:
+                training_file = os.path.join(project_path, "epoch_training.json")
+                if os.path.exists(training_file):
+                    os.remove(training_file)
+
+            if os.path.exists(epoch_file):
+                with open(epoch_file, 'r') as file:
                     epoch_logs = json.load(file)
 
-                if os.path.exists(f"{project_path}/epoch_training.json"):
-                    with open(f"{project_path}/epoch_training.json", 'r') as file:
+                training_file = os.path.join(project_path, "epoch_training.json")
+                if os.path.exists(training_file):
+                    with open(training_file, 'r') as file:
                         epochs = json.load(file)
                         epochs[f"{loop}"] = epoch_logs
                 else:
-                    epochs = {}
-                    epochs[f"{loop}"] = epoch_logs
+                    epochs = {f"{loop}": epoch_logs}
 
-                with open(f"{project_path}/epoch_training.json", 'w') as file:
+                with open(training_file, 'w') as file:
                     json.dump(epochs, file)
                 return epochs
-        elif os.path.exists(f"{project_path}/epoch_training.json"):
-            # print(f"no epoch yet for loop {loop}")
+        elif os.path.exists(os.path.join(project_path, "epoch_training.json")):
             if loop != 1:
-                with open(f"{project_path}/epoch_training.json", 'r') as file:
-                    epochs = json.load(file)
-                    return epochs
+                with open(os.path.join(project_path, "epoch_training.json"), 'r') as file:
+                    return json.load(file)
             else:
-                os.remove(f"{project_path}/epoch_training.json")
+                os.remove(os.path.join(project_path, "epoch_training.json"))
                 return None
-
-        else:
-            # print(f"Epoch logs file does not exists {log_path}")
-            return None
+        return None
 
     @staticmethod
     def remove_dirc(path):
@@ -274,6 +266,7 @@ class LTSManager:
 
             # Now remove the empty directory
             os.rmdir(path)
+
 
 
 

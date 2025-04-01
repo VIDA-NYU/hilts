@@ -27,7 +27,6 @@ app = Flask(__name__)
 # socketio = SocketIO(app) #cors_allowed_origins="*"
 
 
-stop_task = False
 # Path for our main Svelte app. All routes in the app must be added
 # here to allow refreshing to work correctly.
 @app.route("/")
@@ -249,12 +248,16 @@ def create_database():
         raise ValueError('No selected file')
 
     project_id = request.form.get('projectId')
+    datatype = request.form.get('datatype')
     if project_id =='':
         return {'error': 'Please add a project ID'}
     # Get the CSV file from the form data
 
-    filename = file.filename
+    filename = file.filename #TODO change train name
     # filepath = os.path.join(project_id, filename)
+    if datatype == "test":
+        filename = "test.csv"
+
 
     project_dir = os.path.join("data", project_id)
     if not os.path.exists(project_dir):

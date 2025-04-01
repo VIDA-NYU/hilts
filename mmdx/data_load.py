@@ -104,8 +104,14 @@ def embed_image_files(
                     image_path=os.path.join(data_path, path)
                 )
             embeddings.append((path, embedding))
+        except FileNotFoundError as e:
+            print(f"Image file not found: {path}")
+            embeddings.append((path, None))
+        except IOError as e:
+            print(f"Error reading image file {path}: {str(e)}")
+            embeddings.append((path, None))
         except Exception as e:
-            print(f"Failed to create embbeding for image {path}.", e)
+            print(f"Unexpected error processing image {path}: {str(e)}")
             embeddings.append((path, None))
     return embeddings
 

@@ -1,54 +1,99 @@
 import json
-
-def parse_args(project_id):
-    # parser = argparse.ArgumentParser(prog="Sampling fine-tuning", description='Perform Sampling and fine tune')
-    # parser.add_argument('-sampling', type=str, help="Name of sampling method")
-    # parser.add_argument('-sample_size', type=int, help="Sample size")
-    # parser.add_argument('-filter_label', type=bool, help="Use model clf results to filter data")
-    # parser.add_argument('-balance', type=bool, help="Balance positive and negative samples")
-    # parser.add_argument('-model_finetune', type=str, help="Model base for fine tuning")
-    # parser.add_argument('-labeling', type=str, help="Model to be used for labeling or file if label already on file")
-    # parser.add_argument('-filename', type=str, help="The initial file to be used")
-    # parser.add_argument('-model', type=str, help="The type of model to be fine-tuned")
-    # parser.add_argument('-metric', type=str, help="The type of metric to be used for baseline")
-    # parser.add_argument('-val_path', type=str, help="Path to validation")
-    # parser.add_argument('-val_size', type=int, help="Size of validation data if no validation is provided")
-    # parser.add_argument('-cluster_size', type=str, help="Path to validation")
-    # parser.add_argument('-budget', type=int, help="Number of times to do the loop")
-    # parser.add_argument('-retrain', type=bool, help="retrain or keep the best model to fine tune")
-    # parser.add_argument('-baseline', type=float, help="The initial baseline metric")
-    # parser.add_argument('-id', type=str, help="The id of the process")
+import os
+from typing import Dict, Any
 
 
-    # def parse_args(project_id):
+def parse_args(project_path: str) -> Dict[str, Any]:
+    """
+    Parse configuration from the project's config file.
+
+    Args:
+        project_path: Path to the project directory containing config_file.json
+
+    Returns:
+        Dict containing the configuration
+
+    Raises:
+        ValueError: If config file is missing or invalid
+    """
+    config_file = os.path.join(project_path, "config_file.json")
+    if not os.path.exists(config_file):
+        raise ValueError(f"Config file not found at {config_file}")
+
     try:
-        config = read_config(f"data/{project_id}/config_file.json")
+        config = read_config(config_file)
+        if not config:
+            raise ValueError("Config file is empty")
+        return config
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in config file: {str(e)}")
     except Exception as e:
-        raise ValueError(f"Config file is required: {e}")
-    return config
+        raise ValueError(f"Error reading config file: {str(e)}")
 
 
-def read_config(config_file):
+def read_config(config_file: str) -> Dict[str, Any]:
     """
     Reads the configuration from a JSON file.
+
+    Args:
+        config_file: Path to the config file
+
+    Returns:
+        Dict containing the configuration
+
+    Raises:
+        json.JSONDecodeError: If the file contains invalid JSON
     """
     with open(config_file, "r") as f:
         return json.load(f)
 
-def save_config(config, config_file):
+
+def validate_config(config: Dict[str, Any]) -> None:
+    """
+    Validates the configuration dictionary.
+
+    Args:
+        config: Configuration dictionary to validate
+
+    Raises:
+        ValueError: If required fields are missing or invalid
+    """
+    required_fields = {
+        "sampling": str,
+        "sample_size": int,
+        "filter_label": bool,
+        "balance": bool,
+        "model_finetune": str,
+        "labeling": str,
+        "filename": str,
+        "model": str,
+        "metric": str,
+        "val_size": int,
+        "cluster_size": str,
+        "budget": int,
+        "retrain": bool,
+        "baseline": (int, float),
+    }
+
+    for field, field_type in required_fields.items():
+        if field not in config:
+            raise ValueError(f"Missing required field: {field}")
+        if not isinstance(config[field], field_type):
+            raise ValueError(f"Invalid type for {field}: expected {field_type}, got {type(config[field])}")
+
+def save_config(config, config_path):
     """
     Saves the updated configuration to a JSON file.
     """
-    with open(config_file, "w") as f:
+    with open(config_path, "w") as f:
         json.dump(config, f, indent=4)
 
-def update_config(project_id, new_info):
+def update_config(project_path, new_info):
     """
     Updates the configuration file for a given project ID with new information.
     """
-    config_file = f"data/{project_id}/config_file.json"
-
-    config = read_config(config_file)
+    config_path = f"{project_path}/config_file.json"
+    config = read_config(config_path)
 
     ## continue from where it stops
     budget_value = config.get("bugetValue")
@@ -67,7 +112,7 @@ def update_config(project_id, new_info):
     config["baseline"] = new_info.get("baseline", config.get("baseline"))
 
     # Save the updated config back to the file
-    save_config(config, config_file)
+    save_config(config, config_path)
 
     print("Config updated successfully.")
 

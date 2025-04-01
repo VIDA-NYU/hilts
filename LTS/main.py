@@ -4,13 +4,14 @@ from .labeling import Labeling
 from .preprocessing import TextPreprocessor
 from .lts_processing import LTS
 import os
-
+from .state_manager import write_state
 from .utils import create_clustered_data, print_summary, prepare_validation, initialize_trainer, initialize_sampler
 
 nltk.download('punkt')
 
-def initialize_LTS(project_id, state_path, label_hilts):
-    args = parse_args(project_id)
+def initialize_LTS(project_path):
+
+    args = parse_args(project_path)
 
     sampling = args.get("sampling")
     sample_size = args.get("sample_size")
@@ -30,21 +31,21 @@ def initialize_LTS(project_id, state_path, label_hilts):
     # Load data
     preprocessor = TextPreprocessor()
 
-    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, state_path)
+    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, project_path)
 
     # Set up labeling and validation
     labeler = Labeling(label_model=labeling, prompt=prompt)
     labeler.set_model()
-    validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_id, state_path)
+    validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path)
 
     # Initialize fine-tuner and sampler
-    with open(state_path + "/state.txt", "w") as f:
-        f.write("Loading Base Model")
+    write_state(project_path, "Loading Base Model")
     # if label_hilts == "file":
     #     model_finetune = model_init
-    trainer = initialize_trainer("text", model_finetune, validation, project_id=project_id)
+    trainer = initialize_trainer("text", model_finetune, validation, project_path=project_path)
 
-    sampler = initialize_sampler(sampling, cluster_size, project_id)
+
+    sampler = initialize_sampler(sampling, cluster_size, project_path)
 
     return args, sampler, data, trainer, labeler
 

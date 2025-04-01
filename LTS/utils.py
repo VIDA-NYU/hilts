@@ -6,6 +6,7 @@ from .random_sampling import RandomSampler
 from .fine_tune import BertFineTuner
 from .thompson_sampling import ThompsonSampler
 from .clustering import TextClustering
+from .state_manager import write_state
 
 def create_clustered_data(preprocessor, algorithm, cluster_size, project_path):
     """
@@ -13,16 +14,15 @@ def create_clustered_data(preprocessor, algorithm, cluster_size, project_path):
     Returns the processed DataFrame.
     """
     try:
-        data = pd.read_csv(project_path + "/filename" + "_cluster_data.csv")
+        data = pd.read_csv(f"{project_path}/filename_cluster_data.csv")
         print("Using data saved on disk")
     except FileNotFoundError:
-        with open(project_path + "/state.txt", "w") as f:
-            f.write("Clustering Data")
-        data = pd.read_csv(project_path + "/filename" + ".csv")
+        write_state(project_path, "Clustering Data")
+        data = pd.read_csv(f"{project_path}/filename.csv")
         data = preprocessor.preprocess_df(data)
 
         print("Creating LDA")
-        clustering = TextClustering(data, "title", cluster_size, algorithm, project_id)
+        clustering = TextClustering(data, "title", cluster_size, algorithm, project_path)
         clustering.preprocess_text()
         data = clustering.perform_clustering()
     return data
@@ -74,37 +74,33 @@ def print_summary(sampler):
     print(sampler.wins)
     print(sampler.losses)
 
-def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, id, state_path):
-    if os.path.exists(f'data/{id}/validation.csv'):
-        validation = pd.read_csv(f'data/{id}/validation.csv')
+def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path):
+    if os.path.exists(f'{project_path}/validation.csv'):
+        validation = pd.read_csv(f'{project_path}/validation.csv')
     elif validation_path:
         validation = pd.read_csv(validation_path)
         validation = preprocessor.preprocess_df(validation)
-        save_validation_data(validation, f"data/{id}/validation.csv")
+        save_validation_data(validation, f"{project_path}/validation.csv")
     else:
-        with open(state_path + "/state.txt", "w") as f:
-            f.write("Creating Validation")
-        sampler = RandomSampler(data['label_cluster'].nunique(), id)
+        write_state(project_path, "Creating Validation")
+        sampler = RandomSampler(data['label_cluster'].nunique(), project_path)
         sample_validation, _ = sampler.create_validation_data(data, validation_size)
         validation = labeler.generate_inference_data(sample_validation, 'clean_title')
         if "label" not in validation.columns:
             validation["answer"] = validation.apply(lambda x: labeler.predict_animal_product(x), axis=1)
             validation["answer"] = validation["answer"].str.strip()
             validation["label"] = np.where(validation["answer"].str.contains("not a relevant product"), 0, 1)
-        save_validation_data(validation, f"data/{id}/validation.csv")
+        save_validation_data(validation, f"{project_path}/validation.csv")
     return validation
 
-def initialize_trainer(model, model_finetune, validation, project_id):
-    if model == "text":
-        return BertFineTuner(model_finetune, None, validation, project_id=project_id)
-    else:
-        raise NotImplementedError
+def initialize_trainer(model, model_finetune, validation, project_path):
+    return BertFineTuner(model_finetune, None, validation, project_path=project_path)
 
-def initialize_sampler(sampling, cluster_size, id):
+def initialize_sampler(sampling, cluster_size, project_path):
     if sampling == "thompson":
-        return ThompsonSampler(cluster_size, id)
+        return ThompsonSampler(cluster_size, project_path)
     elif sampling == "random":
-        return RandomSampler(cluster_size, id)
+        return RandomSampler(cluster_size, project_path)
     else:
         raise ValueError("Choose one of thompson or random")
 
