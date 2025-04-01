@@ -2,7 +2,7 @@
   import * as api from "./Api"; // Assuming the API logic is in this file
   import { onMount, onDestroy } from "svelte";
   import { io } from "socket.io-client";
-  // import {createChart} from "./cards/trainingChart"
+  import { createChart } from "./cards/trainingChart";
   import { projectName } from "./stores";
   import { navigate } from "svelte-routing";
   import * as d3 from "d3";
@@ -25,17 +25,18 @@
       llm_labels: [],
       epochs: {},
       training_metrics: { step: [] },
+      inference_progress: null
     },
   };
 
-  let chartData = {
+  let chartData =  {
     precision: [],
     recall: [],
     f1_score: [],
     accuracy: [],
   };
 
-  let   epochs = {};
+  let epochs: Record<string, any[]> = {};
   let isTraining = false;
   let isRunning = false;
   let projectId = "";
@@ -44,145 +45,45 @@
     projectId = name;
   });
 
-
   // Initialize training state
   let disableBottom = true;
-  let steps_training = [];
-  let states = [];
+  let steps_training: [];
+  let states: string[] = [];
   let currentStep = 0;
   let loop = 0;
 
-  // const updateChartData = (msg) => {
-  //   if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
-  //     msg.precision.forEach((value) => chartData.precision.push(value));
-  //     msg.recall.forEach((value) => chartData.recall.push(value));
-  //     msg.f1_score.forEach((value) => chartData.f1_score.push(value));
-  //     msg.accuracy.forEach((value) => chartData.accuracy.push(value));
-  //   }
-  // };
-  const updateChartData = (msg) => {
-  if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
-    // Keep only the last 5 values for each score list
-    chartData.precision.push(...msg.precision.slice(-5));
-    chartData.recall.push(...msg.recall.slice(-5));
-    chartData.f1_score.push(...msg.f1_score.slice(-5));
-    chartData.accuracy.push(...msg.accuracy.slice(-5));
+  if (!states) {
+    states = [];
   }
-};
-  const createChart = () => {
-    const x0 = d3
-      .scaleBand()
-      .domain(steps_training)
-      .rangeRound([margin.left, width - margin.right])
-      .padding(0.1);
 
-    const x1 = d3
-      .scaleBand()
-      .domain(["precision", "recall", "f1_score", "accuracy"]) // Bar groups for each metric
-      .rangeRound([0, x0.bandwidth()])
-      .padding(0.05);
+  const updateChartData = (msg) => {
+    if (msg && msg.precision && msg.recall && msg.f1_score && msg.accuracy) {
+      // Reset chartData to avoid indefinite growth
+      chartData = {
+        precision: [],
+        recall: [],
+        f1_score: [],
+        accuracy: [],
+      };
 
-    const y = d3
-      .scaleLinear()
-      .domain([0, 1]) // Scores between 0 and 1
-      .nice()
-      .range([height - margin.bottom, margin.top]);
-
-    const color = d3
-      .scaleOrdinal()
-      .domain(["precision", "recall", "f1_score", "accuracy"])
-      .range(["#66c2a5", "#fc8d62", "#8da0cb", "#b3b3b3"]); // Different colors for each metric
-
-    const svgElement = d3
-      .select("#chart")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", [0, 0, width, height])
-      .attr("style", "max-width: 100%; height: auto;");
-
-    svgElement.selectAll("*").remove(); // Clear previous chart
-
-    // Create groups for each step on the x-axis
-    const g = svgElement
-      .append("g")
-      .selectAll("g")
-      .data(steps_training)
-      .enter()
-      .append("g")
-      .attr("transform", (d) => `translate(${x0(d)},0)`);
-
-    // X-axis (Step axis)
-    svgElement
-      .append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x0))
-      .selectAll("text")
-      .style("font-size", "12px")
-      .style("text-anchor", "middle");
-
-    // Y-axis (Score values)
-    svgElement
-      .append("g")
-      .attr("transform", `translate(${margin.left}, 0)`)
-      .call(d3.axisLeft(y))
-      .style("font-size", "12px");
-
-    // Draw bars for all metrics (precision, recall, f1_score, accuracy)
-    g.selectAll("rect")
-      .data((d) =>
-        ["precision", "recall", "f1_score", "accuracy"].map((key) => ({
-          key,
-          value: chartData[key][steps_training.indexOf(d)], // Use the corresponding value for each metric
-        }))
-      )
-      .enter()
-      .append("rect")
-      .attr("x", (d) => x1(d.key)) // Position bars by metric (precision, recall, f1_score, accuracy)
-      .attr("y", (d) => y(d.value))
-      .attr("width", x1.bandwidth()) // Set the width of the bar
-      .attr("height", (d) => y(0) - y(d.value)) // Height based on the score
-      .attr("fill", (d) => color(d.key)); // Color based on the metric
-
-    // Legend for all metrics (precision, recall, f1_score, accuracy)
-    const legendData = [
-      { label: "Precision", color: "#66c2a5" },
-      { label: "Recall", color: "#fc8d62" },
-      { label: "F1 Score", color: "#8da0cb" },
-      { label: "Accuracy", color: "#b3b3b3" },
-    ];
-
-    const legend = svgElement
-      .append("g")
-      .attr("transform", `translate(${width - margin.right - 5}, 20)`); // Position the legend
-
-    // Create colored rectangles for the legend
-    const legendItems = legend
-      .selectAll(".legend")
-      .data(legendData)
-      .enter()
-      .append("g")
-      .attr("class", "legend")
-      .attr("transform", (d, i) => `translate(0, ${i * 20})`);
-
-    legendItems
-      .append("rect")
-      .attr("width", 18)
-      .attr("height", 18)
-      .attr("fill", (d) => d.color);
-
-    // Create text for legend labels
-    legendItems
-      .append("text")
-      .attr("x", 24)
-      .attr("y", 9)
-      .attr("dy", ".35em") // Vertically center the text
-      .style("font-size", "12px")
-      .style("fill", "black")
-      .text((d) => d.label);
+      // Keep only the last 5 values for each score list
+      chartData.precision.push(...msg.precision.slice(-5));
+      chartData.recall.push(...msg.recall.slice(-5));
+      chartData.f1_score.push(...msg.f1_score.slice(-5));
+      chartData.accuracy.push(...msg.accuracy.slice(-5));
+    }
   };
 
   const formatNumber = (number) => {
   return number.toFixed(3); // Limits the number to 5 decimal places
+  };
+
+  // Add inference progress tracking
+  let inferenceProgress = {
+    totalChunks: 0,
+    currentChunk: 0,
+    totalRecords: 0,
+    processedRecords: 0
   };
 
   async function getStatus() {
@@ -204,6 +105,10 @@
 
       checkLabels = status.lts_state === "User Labeling";
 
+      // Update inference progress if available
+      if (status.stats.inference_progress) {
+        inferenceProgress = status.stats.inference_progress;
+      }
 
       if (status.lts_state && !states.includes(status.lts_state)) {
         states = [...states, status.lts_state];
@@ -228,7 +133,7 @@
           if (steps_training.length > 5){
             steps_training = steps_training.slice(-5)
           }
-          createChart(); // Re-create the chart with updated data
+          createChart(chartData, steps_training);
         }
       }
     } else {
@@ -295,7 +200,19 @@
               >
                 {index + 1}
               </div>
-              <div class="step-name">{step}</div>
+              <div class="step-content">
+                <div class="step-name">{step}</div>
+                {#if step === "Cluster Inference" && status.stats.inference_progress}
+                  <div class="inference-progress">
+                    <div class="progress-bar">
+                      <div class="progress-bar-fill" style="width: {Math.round((status.stats.inference_progress.processed_records / status.stats.inference_progress.total_records) * 100)}%"></div>
+                    </div>
+                    <div class="progress-text">
+                      Chunk {status.stats.inference_progress.current_chunk}/{status.stats.inference_progress.total_chunks}
+                    </div>
+                  </div>
+                {/if}
+              </div>
             </div>
           {/each}
         </div>
@@ -327,14 +244,14 @@
       <div class="col-4">
         <div class="card m-3 fixed-card">
           <div class="card-header bg-primary text-white justify-content-between">LTS: Training Logs
-            <button
+            <!-- <button
               class="btn btn-light mb-2 m-2"
               on:click={interference}
               disabled={disableBottom}
             >
               <span class="fa fa-pause" />
               Stop LTS
-            </button>
+            </button> -->
             {#if isTrainingInProgress}
             <span>
               <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
@@ -342,50 +259,49 @@
             </span>
             {/if}
           </div>
-            <div class="w-full xl:w-4/12 mt-6">
-              <div class="log-epoch">
-                <div class="epoch">
-                  {#each Object.entries(epochs) as [loopNumber, epochsForLoop]}
-                    <div class="row mb-3">
-                      <h5>Training {loopNumber} Results</h5>
-                        <table class="table table-striped table-primary">
-                          <thead>
-                            <tr>
-                              <th>Epoch</th>
-                              <th>Accuracy</th>
-                              <th>F1</th>
-                              <th>Precision</th>
-                              <th>Recall</th>
-                              <th>Loss</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {#each epochsForLoop as epoch}
-                              <tr>
-                                <td>{epoch.epoch}</td>
-                                <td>{formatNumber(epoch.eval_accuracy)}</td>
-                                <td>{formatNumber(epoch.eval_f1)}</td>
-                                <td>{formatNumber(epoch.eval_precision)}</td>
-                                <td>{formatNumber(epoch.eval_recall)}</td>
-                                <td>{formatNumber(epoch.eval_loss)}</td>
-                              </tr>
-                            {/each}
-                          </tbody>
-                        </table>
-                        </div>
-                    {/each}
-                </div>
+          <div class="log-container">
+            <div class="log-epoch">
+              <div class="epoch">
+                {#each Object.entries(epochs).reverse() as [loopNumber, epochsForLoop]}
+                  <div class="row mb-3">
+                    <h5>Training {loopNumber} Results</h5>
+                    <table class="table table-striped table-primary">
+                      <thead>
+                        <tr>
+                          <th>Epoch</th>
+                          <th>Accuracy</th>
+                          <th>F1</th>
+                          <th>Precision</th>
+                          <th>Recall</th>
+                          <th>Loss</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {#each epochsForLoop.reverse() as epoch}
+                          <tr>
+                            <td>{epoch.epoch}</td>
+                            <td>{formatNumber(epoch.eval_accuracy)}</td>
+                            <td>{formatNumber(epoch.eval_f1)}</td>
+                            <td>{formatNumber(epoch.eval_precision)}</td>
+                            <td>{formatNumber(epoch.eval_recall)}</td>
+                            <td>{formatNumber(epoch.eval_loss)}</td>
+                          </tr>
+                        {/each}
+                      </tbody>
+                    </table>
+                  </div>
+                {/each}
               </div>
             </div>
+          </div>
         </div>
       </div>
       <div class="col-4">
         <div class="card m-3">
-          <div class="card-header bg-primary text-white justify-content-between align-items-center">Model Metrics
-          </div>
+          <div class="card-header bg-primary text-white justify-content-between align-items-center">Model Metrics</div>
         </div>
-        <svg id="chart"></svg>
-        </div>
+        <svg id="chart" style="width: 100%; height: 400px;"></svg>
+      </div>
     {/if}
   </div>
 </div>
@@ -407,6 +323,28 @@
     flex-direction: column;
     margin-bottom: 20px;
   }
+
+  .log-container {
+    height: 400px; /* Set a fixed height for the logs container */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    padding: 10px; /* Optional: Add padding for better spacing */
+    background-color: #f9f9f9; /* Optional: Add a background color */
+    border: 1px solid #ddd; /* Optional: Add a border */
+    border-radius: 8px; /* Optional: Add rounded corners */
+  }
+
+  .table {
+    width: 100%;
+    table-layout: fixed;
+    text-align: center;
+  }
+
+  .table th,
+  .table td {
+    white-space: nowrap; /* Prevent text wrapping */
+  }
+
   .table {
     margin-top: 10px;
   }
@@ -471,6 +409,48 @@
   height: 500px; /* Adjust this height value as needed */
   display: flex;
   flex-direction: column;
+}
+
+.progress {
+  height: 25px;
+  font-size: 14px;
+  line-height: 25px;
+}
+
+.progress-bar {
+  transition: width 0.3s ease;
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.inference-progress {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #9f4ac3;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #666;
 }
 
 </style>

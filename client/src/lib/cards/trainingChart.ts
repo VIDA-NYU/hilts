@@ -88,7 +88,7 @@ export function createChart(chartData: ChartData, steps_training: string[]): voi
         .data((d: string) =>
             ["precision", "recall", "f1_score", "accuracy"].map((key: string) => ({
                 key,
-                value: chartData[key][steps_training.indexOf(d)],
+                value: chartData[key][steps_training.indexOf(d)] || 0, // Default to 0 if undefined
             }))
         )
         .enter()
