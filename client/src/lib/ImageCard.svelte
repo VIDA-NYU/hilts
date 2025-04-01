@@ -13,6 +13,8 @@
   import { get } from "svelte/store";
 
   export let hit: Hit;
+  export let projectId: string;
+
   $: parsedHitMetadata = hit.metadata;
   $: hitLabels = hit.labels_types_dict;
   $: animalLabel = hit.animal;
@@ -24,10 +26,25 @@
   let allNegKeywords: string[];
   let allSelectedData: { [key: string]: boolean };
   let selectedDescription: string;
-  let selectedNegKeyword: string;
   let selectedAnimal: string;
   let isSelected: boolean = true;
 
+  let urlClickCount = 0; // Track URL clicks
+
+  async function saveCounts() {
+    try {
+      const response = await api.saveCounts({urlClickCount}, projectId);
+      console.log("Counts saved successfully:", response);
+    } catch (error) {
+      console.error("Error saving counts:", error);
+    }
+  }
+
+  function handleUrlClick() {
+    urlClickCount += 1;
+    console.log(`URL clicked ${urlClickCount} times`);
+    saveCounts(); // Save the updated counts
+  }
 
   descriptionsStore.subscribe((storeLabels) => {
     allLabels = storeLabels;
@@ -180,88 +197,91 @@
     </div>
     <div class="card-body">
       <p class="card-text mb-2">
-        <a href="{parsedHitMetadata['url']}" target="_blank">
+        <a
+          href="{parsedHitMetadata['url']}"
+          target="_blank"
+          on:click={handleUrlClick}
+        >
           {hit.title ? hit.title : hit.image_path}<br />
         </a>
-        <strong><b>{"Price"}: </b></strong>  {parsedHitMetadata["price"] ? parsedHitMetadata["price"] : "NA" }  {parsedHitMetadata["currency"] ? parsedHitMetadata["currency"] : "NA" }<br />
-        <strong><b>{"Seller"}: </b></strong> {parsedHitMetadata["seller"] ? parsedHitMetadata["seller"] : "NA" }<br />
+        <strong><b>{"Price"}: </b></strong> {parsedHitMetadata["price"] ? parsedHitMetadata["price"] : "NA"} {parsedHitMetadata["currency"] ? parsedHitMetadata["currency"] : "NA"}<br />
+        <strong><b>{"Seller"}: </b></strong> {parsedHitMetadata["seller"] ? parsedHitMetadata["seller"] : "NA"}<br />
       </p>
-      <div class="btn-toolbar mb-1">
-          <button
-            class="btn btn-success me-1 {animalLabel !== "animal origin" ? "animal true": ''}"
-            on:click={() => addLabelExclusive("animal origin", "relevant")}
-          >
-            <i class="fa fa-thumbs-up" aria-hidden="true" />
-          </button>
-          <button
-            class="btn btn-warning {animalLabel !== "not animal origin" ? "animal true": ''}"
-            on:click={() => addLabelExclusive("not animal origin", "relevant")}
-          >
-            <i class="fa fa-thumbs-down" aria-hidden="true" />
-          </button>
-        <!-- </div> -->
-        </div>
-        <div class="btn-group-vertical" role="group" aria-label="">
+    <div class="btn-toolbar mb-1">
+        <button
+          class="btn btn-success me-1 {animalLabel !== "animal origin" ? "animal true": ''}"
+          on:click={() => addLabelExclusive("animal origin", "relevant")}
+        >
+          <i class="fa fa-thumbs-up" aria-hidden="true" />
+        </button>
+        <button
+          class="btn btn-warning {animalLabel !== "not animal origin" ? "animal true": ''}"
+          on:click={() => addLabelExclusive("not animal origin", "relevant")}
+        >
+          <i class="fa fa-thumbs-down" aria-hidden="true" />
+        </button>
+      <!-- </div> -->
+      </div>
+      <div class="btn-group-vertical" role="group" aria-label="">
+        <AutoComplete
+          debug={false}
+          inputClassName="form-control"
+          items={allAnimals}
+          bind:selectedItem={selectedAnimal}
+          create={false}
+          onChange={(label) => addLabelExclusive(label, "animal")}
+          placeholder="Animal"
+        />
+
+        <!-- <div class="btn-group me-2" role="group" aria-label=""> -->
           <AutoComplete
             debug={false}
             inputClassName="form-control"
-            items={allAnimals}
-            bind:selectedItem={selectedAnimal}
-            create={false}
-            onChange={(label) => addLabelExclusive(label, "animal")}
-            placeholder="Animal"
+            items={allLabels}
+            bind:selectedItem={selectedDescription}
+            create={true}
+            onCreate={handleCreateDescription}
+            onChange={(label) => addLabelInclusive(label, "description")}
+            placeholder="Description"
           />
-
-          <!-- <div class="btn-group me-2" role="group" aria-label=""> -->
-            <AutoComplete
-              debug={false}
-              inputClassName="form-control"
-              items={allLabels}
-              bind:selectedItem={selectedDescription}
-              create={true}
-              onCreate={handleCreateDescription}
-              onChange={(label) => addLabelInclusive(label, "description")}
-              placeholder="Description"
-            />
-        </div>
-        {#if hitLabels && Object.keys(hitLabels).length > 0}
-          <div class="btn-toolbar mb-1">
-            {#each Object.entries(hitLabels) as [label, value], idx}
+      </div>
+      {#if hitLabels && Object.keys(hitLabels).length > 0}
+        <div class="btn-toolbar mb-1">
+          {#each Object.entries(hitLabels) as [label, value], idx}
+            <span
+              class="badge rounded-pill me-1 mt-1 mb-1 position-relative {getLabelColor(label)}"
+            >
+              <!-- style="background-color: {colors[idx]} !important;" -->
+              {label}
               <span
-                class="badge rounded-pill me-1 mt-1 mb-1 position-relative {getLabelColor(label)}"
+                role="button"
+                on:click={() => removeLabels(label)}
+                class="position-absolute top-0 start-100 translate-middle"
               >
-                <!-- style="background-color: {colors[idx]} !important;" -->
-                {label}
-                <span
-                  role="button"
-                  on:click={() => removeLabels(label)}
-                  class="position-absolute top-0 start-100 translate-middle"
-                >
-                  <i class="fa fa-times-circle bg-primary" aria-hidden="true" />
-                  <span class="visually-hidden">Remove label</span>
-                </span>
+                <i class="fa fa-times-circle bg-primary" aria-hidden="true" />
+                <span class="visually-hidden">Remove label</span>
               </span>
-            {/each}
-          </div>
-        {/if}
-        <div class="d-flex justify-content-between">
-          <div class="btn-group">
-            <button
-              class="btn btn-sm btn-info me-1"
-              on:click={() => navigate("/search/seller?q=" + parsedHitMetadata["seller"])}
-              disabled={!parsedHitMetadata["seller"]}
-            >
-              <i class="fa fa-search me-1" aria-hidden="true" />
-              Search Seller
-            </button>
-            <button
-              class="btn btn-sm btn-info"
-              on:click={() => navigate("/search/image?q=" + hit.image_path)}
-            >
-              <i class="fa fa-search me-1" aria-hidden="true" />
-              Find Similar
-            </button>
-          <!-- </div> -->
+            </span>
+          {/each}
+        </div>
+      {/if}
+      <div class="d-flex justify-content-between">
+        <div class="btn-group">
+          <button
+            class="btn btn-sm btn-info me-1"
+            on:click={() => navigate("/search/seller?q=" + parsedHitMetadata["seller"])}
+            disabled={!parsedHitMetadata["seller"]}
+          >
+            <i class="fa fa-search me-1" aria-hidden="true" />
+            Search Seller
+          </button>
+          <button
+            class="btn btn-sm btn-info"
+            on:click={() => navigate("/search/image?q=" + hit.image_path)}
+          >
+            <i class="fa fa-search me-1" aria-hidden="true" />
+            Find Similar
+          </button>
         </div>
       </div>
     </div>

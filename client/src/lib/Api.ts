@@ -393,6 +393,36 @@ export function labelCounts(): Promise<LabelCountsResponse> {
   });
 }
 
+interface SaveCountsResponse {
+  success: boolean;
+  message: string;
+}
+
+export async function saveCounts(counts: { urlClickCount: number; }, project_id: string): Promise<SaveCountsResponse> {
+  const url = `${API_URL}/save_counts`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ...counts, project_id }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save counts. Status: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    console.log("Counts saved successfully:", responseData);
+    return responseData;
+  } catch (error) {
+    console.error("Error saving counts:", error);
+    throw new Error("Error saving counts.");
+  }
+}
+
 interface FetchInit {
   method: string;
   headers: { [index: string]: string };

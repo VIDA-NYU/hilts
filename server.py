@@ -76,6 +76,42 @@ def stop_training():
     ltsmanager.stop_LTS()
     return {'message': 'LTS Stop message sent'}
 
+@app.route("/api/v1/save_counts", methods=["POST"])
+def save_counts():
+    try:
+        # Get the counts and project_id from the request body
+        data = request.get_json()
+        url_click_count = data.get("urlClickCount", 0)
+        project_id = data.get("project_id")
+
+        if not project_id:
+            return jsonify({"success": False, "message": "Project ID is required"}), 400
+
+        # Define the directory and file path for saving the counts
+        project_dir = os.path.join("data", project_id)
+        os.makedirs(project_dir, exist_ok=True)
+        counts_file_path = os.path.join(project_dir, "click_counts.json")
+
+        # Load existing counts if the file exists
+        if os.path.exists(counts_file_path):
+            with open(counts_file_path, "r") as file:
+                counts_data = json.load(file)
+        else:
+            counts_data = {"urlClickCount": 0}
+
+        # Update the counts
+        counts_data["urlClickCount"] += url_click_count
+
+        # Save the updated counts back to the file
+        with open(counts_file_path, "w") as file:
+            json.dump(counts_data, file, indent=4)
+
+        return jsonify({"success": True, "message": "Counts saved successfully", "data": counts_data})
+
+    except Exception as e:
+        print(f"Error saving counts: {e}")
+        return jsonify({"success": False, "message": f"Error saving counts: {e}"})
+
 @app.route("/api/v1/set_db", methods=['POST'])
 def set_labels_db():
     data = request.get_json()

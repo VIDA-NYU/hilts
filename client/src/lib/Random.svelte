@@ -142,7 +142,7 @@
         <div class="mt-3 d-flex flex-wrap">
           {#each result.hits as hit, idx}
             <div class="w-25">
-              <ImageCard {hit} />
+                <ImageCard {hit} {projectId}/>
             </div>
           {/each}
           <div class="w-25">
