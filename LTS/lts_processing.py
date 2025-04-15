@@ -15,7 +15,8 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
     if labeling != "file":
         write_state(project_path, "LLM labeling")
         training_data = labeler.generate_inference_data(training_data, 'clean_title')
-        training_data["answer"] = training_data.apply(lambda x: labeler.predict_animal_product(x), axis=1)
+        answer = labeler.predict_animal_product(training_data)
+        training_data["answer"] = answer
         training_data["answer"] = training_data["answer"].str.strip()
         training_data["label"] = np.where(training_data["answer"].str.contains("not a relevant product"), 0, 1)
         training_data["label"] = training_data["label"].astype(int)
@@ -76,6 +77,7 @@ def add_previous_data(df, project_path):
 
 def maybe_balance_data(balance, df):
     if balance:
+        df_diff = df[df["label"] != df["label_llm"]]
         if len(df[df["label"]==1]) > 0:
             unbalanced = len(df[df["label"]==0]) / len(df[df["label"]==1]) >= 2
             if unbalanced:
@@ -87,6 +89,7 @@ def maybe_balance_data(balance, df):
                     df[df["label"] == 1].sample(min_count)
                 ])
 
+                balanced_df = pd.concat([balanced_df, df_diff]).drop_duplicates()
                 # Shuffle the rows
                 df = balanced_df.sample(frac=1).reset_index(drop=True)
                 print(f"Balanced data: {df.label.value_counts()}")

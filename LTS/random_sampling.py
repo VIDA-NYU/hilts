@@ -27,6 +27,7 @@ class RandomSampler:
         return sample, None
 
     def create_validation_data(self, df, val_size):
+        print(val_size, self.cluster_size)
         if val_size < self.cluster_size:
             samples_per_cluster = 1
         samples_per_cluster = int(val_size / self.cluster_size)
@@ -40,6 +41,8 @@ class RandomSampler:
         #     sampled_data.append()
         # sampled_data = pd.concat(sampled_data)
         sampled_data = sampled_data.sample(frac=1, random_state=42).reset_index(drop=True)
+        if sampled_data.empty:
+            print("Validation is empty")
         # Add the IDs of sampled data to the selected_ids set to not add this data on the training set
         self.selected_ids.update(sampled_data['id'])
         with open(f'{self.project_path}/selected_ids.txt', 'w') as f:

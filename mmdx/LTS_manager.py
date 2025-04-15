@@ -220,36 +220,81 @@ class LTSManager:
 
     @staticmethod
     def get_epoch_logs(project_path, process_path, loop):
+        """
+        Retrieve and update epoch logs for the current loop.
+
+        Args:
+            project_path (str): Path to the project directory.
+            process_path (str): Path to the process directory.
+            loop (int): Current loop number.
+
+        Returns:
+            dict: Updated epoch logs or None if an error occurs.
+        """
         log_path = os.path.join(process_path, "log")
-        if os.path.exists(log_path):
-            epoch_file = os.path.join(log_path, "epoch.json")
-            if loop == 1:
-                training_file = os.path.join(project_path, "epoch_training.json")
-                if os.path.exists(training_file):
-                    os.remove(training_file)
+        epoch_file = os.path.join(log_path, "epoch.json")
+        training_file = os.path.join(project_path, "epoch_training.json")
 
+        try:
+            # Check if the epoch file exists
             if os.path.exists(epoch_file):
-                with open(epoch_file, 'r') as file:
-                    epoch_logs = json.load(file)
+                # Ensure the file is not empty
+                if os.path.getsize(epoch_file) > 0:
+                    with open(epoch_file, 'r') as file:
+                        epoch_logs = json.load(file)
+                else:
+                    print(f"Warning: {epoch_file} is empty.")
+                    return None
 
-                training_file = os.path.join(project_path, "epoch_training.json")
+                # Handle the training file for multiple loops
+                # if loop == 1 and os.path.exists(training_file):
+                #     os.remove(training_file)
+
                 if os.path.exists(training_file):
                     with open(training_file, 'r') as file:
-                        epochs = json.load(file)
-                        epochs[f"{loop}"] = epoch_logs
+                        if os.path.getsize(training_file) > 0:
+                            try:
+                                epochs = json.load(file)
+                            except json.JSONDecodeError:
+                                print(f"Malformed JSON in {training_file}. Attempting to clean.")
+                                epochs = LTSManager.clean_json(training_file) or {}
+                        else:
+                            print(f"Warning: {training_file} is empty.")
+                            epochs = {}
+                    epochs[f"{loop}"] = epoch_logs
                 else:
                     epochs = {f"{loop}": epoch_logs}
 
-                with open(training_file, 'w') as file:
-                    json.dump(epochs, file)
+                # Validate JSON before saving
+                if LTSManager.validate_json(epochs):
+                    with open(training_file, 'w') as file:
+                        json.dump(epochs, file, indent=4)
+                else:
+                    print(f"Invalid JSON data. Skipping save for {training_file}.")
+                    return None
+
                 return epochs
-        elif os.path.exists(os.path.join(project_path, "epoch_training.json")):
-            if loop != 1:
-                with open(os.path.join(project_path, "epoch_training.json"), 'r') as file:
-                    return json.load(file)
-            else:
-                os.remove(os.path.join(project_path, "epoch_training.json"))
-                return None
+
+            # Handle the case where the training file exists but the epoch file does not
+            elif os.path.exists(training_file):
+                with open(training_file, 'r') as file:
+                    if os.path.getsize(training_file) > 0:
+                        try:
+                            return json.load(file)
+                        except json.JSONDecodeError:
+                            print(f"Malformed JSON in {training_file}. Attempting to clean.")
+                            return LTSManager.clean_json(training_file)
+                    else:
+                        print(f"Warning: {training_file} is empty.")
+                        return None
+
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON in {epoch_file} or {training_file}: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error in get_epoch_logs: {e}")
+            return None
+
         return None
 
     @staticmethod
@@ -266,6 +311,57 @@ class LTSManager:
 
             # Now remove the empty directory
             os.rmdir(path)
+
+    @staticmethod
+    def validate_json(data):
+        """
+        Validate if the given data can be serialized to JSON.
+
+        Args:
+            data (dict): The data to validate.
+
+        Returns:
+            bool: True if valid, False otherwise.
+        """
+        try:
+            json.dumps(data)
+            return True
+        except (TypeError, ValueError) as e:
+            print(f"Invalid JSON data: {e}")
+            return False
+
+    @staticmethod
+    def clean_json(file_path):
+        """
+        Attempt to clean a malformed JSON file by removing duplicate keys or extra data.
+
+        Args:
+            file_path (str): Path to the JSON file.
+
+        Returns:
+            dict: The cleaned JSON data, or None if the file cannot be cleaned.
+        """
+        try:
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+
+            # Attempt to parse each line as JSON
+            cleaned_data = []
+            for line in lines:
+                try:
+                    cleaned_data.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+
+            # Combine all valid JSON objects into a single dictionary
+            combined_data = {}
+            for entry in cleaned_data:
+                combined_data.update(entry)
+
+            return combined_data
+        except Exception as e:
+            print(f"Failed to clean JSON file {file_path}: {e}")
+            return None
 
 
 

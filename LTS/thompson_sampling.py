@@ -53,8 +53,11 @@ class ThompsonSampler:
         if labeling == "file":
             if os.path.exists(f"{self.project_path}/hilts_data.csv"):
                 new_labels_df = pd.read_csv(f"{self.project_path}/hilts_data.csv")
+                new_labels_df["label_llm"] = np.where(new_labels_df["answer"].str.contains("not a relevant product"), 0, 1)
                 self.update_labels(filename, new_labels_df)
-            return new_labels_df, None
+                with open(f'{self.project_path}/bandit.txt', 'r') as f:
+                    bandit = f.read()
+                return new_labels_df, int(bandit)
 
         #remove already used data
         df = df[~df['id'].isin(self.selected_ids)]
@@ -101,6 +104,9 @@ class ThompsonSampler:
         self.selected_ids.update(data['id'])
         with open(f'{self.project_path}/selected_ids.txt', 'w') as f:
             f.write('\n'.join(self.selected_ids))
+
+        with open(f'{self.project_path}/bandit.txt', 'w') as f:
+            f.write(f"{chosen_bandit}")
 
         return data, chosen_bandit
 

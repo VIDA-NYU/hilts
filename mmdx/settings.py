@@ -29,7 +29,7 @@ IMAGE_EXTENSIONS: Tuple[str, ...] = parse_image_extensions(
 )
 
 DATA_SOURCE: str = os.getenv("DATA_SOURCE", default="S3")
-DATA_PATH: str = os.getenv("DATA_PATH", default="images-february24") #default="data/leather_images/")
+DATA_PATH: str = os.getenv("DATA_PATH", default=None) #default="data/leather_images/")
 DB_PATH: str = os.getenv("DB_PATH", default="data/db/")
 DB_DELETE_EXISTING: bool = str(os.getenv("DB_DELETE_EXISTING")).lower() == "true"
 DB_BATCH_LOAD: bool = str(os.getenv("DB_BATCH_LOAD")).lower() == "true"

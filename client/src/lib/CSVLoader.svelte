@@ -36,12 +36,32 @@
   let responseMessageTest = "";
 
   // LTS Generator parameters (added for the modal)
-  let task_prompt = ""
+  let task_prompt = `You are labeling tool to create labels for a classification task .I will provide text data from an advertisement of a product.We are interested in any animal intended to be used for their lether/skin.
+     Also any product made out these materials are important.
+      The product should be classified in two labels:
+      Label 1: relevant product - if the product is a animal or a product made of any animal leather or skin.
+      Label 2: not a relevant product - if the product is 100% synthetic with no animal involved (vegan) such as fake lather or fake skin.Return only one of the two labels, no explanation is necessary.
+      Examples:
+      1. Advertisement: Huge 62" Inside Spread Alaskan Yukon Bull Moose Shoulder Mount  | eBay
+      Label: not a relevant product
+      The product in example 1 is a bull mount. The animal entended used is not about the leather or skin.
+      2. Advertisement: Python skin For Sale in Launceston, Cornwall .
+      Label: relevant product
+      The product on example 2 are selling Python skin wich is a product we are intered in.
+      3. Advertisement: Gator leather boots, wallets and purse for sale.
+      Label: relevant product
+      In exemple 3 we have a 3 different products all made of leather of alligator.
+      4. Advertisement: Mario Buccellati, a Rare and Exceptional Italian Silver Gator For Sale at 1stDibs
+      Label: not a relevant product
+      This example 4 is also not an animal product. The gator in the ad is made out of silver.
+      5. Advertisement: Leather Recycled African Safari Bookmarks | eBay
+      Label: not a relevant product
+`
   let sampling = "thompson";
   let sample_size = 100;
   let model_finetune = "bert-base-uncased";
   let model_init = "bert-base-uncased";
-  let labeling = "GPT";
+  let labeling = "gpt";
   let metric = "f1";
   let validation_size = 200;
   let cluster_size = 5;
@@ -51,6 +71,7 @@
   let cluster = "lda"
   let projectId = "";
   let humanLabels = 20;
+  let model_name = "meta-llama/Llama-3.3-70B-Instruct";
   // let stop = 2;
 
   projectName.subscribe((name) => {
@@ -83,7 +104,7 @@
       bugetValue,
       cluster,
       humanLabels,
-      // stop,
+      model_name, // Add model_name here
     };
     console.log("Updated argsDict:", argsDict); // Debugging to verify updates
   }
@@ -124,11 +145,11 @@
 
   // Start the LTS data generation
   async function createLtsConfig() {
-    updateArgs()
+    updateArgs();
     saving = true;
     argsDict["model_init"] = argsDict["model_finetune"];
     try {
-      const response = await api.createLtsConfig(projectId, argsDict); // Pass the entered project ID and argsDict to the API
+      const response = await api.createLtsConfig(projectId, argsDict); // Pass the updated argsDict
       responseMessageSave = "Project Saved!";
       console.log(response);
     } catch (error) {
@@ -475,6 +496,16 @@
           class="form-control"
           bind:value={humanLabels}
         />
+      </div>
+      <div class="col-6">
+        <label for="model_name">Model Name</label>
+        <textarea
+          id="model_name"
+          bind:value={model_name}
+          rows="1"
+          class="form-control"
+          placeholder="Enter model name (e.g., meta-llama/Llama-3.3-70B-Instruct)"
+        ></textarea>
       </div>
     </div>
   </div>

@@ -87,7 +87,8 @@ def prepare_validation(validation_path, validation_size, data, labeler, preproce
         sample_validation, _ = sampler.create_validation_data(data, validation_size)
         validation = labeler.generate_inference_data(sample_validation, 'clean_title')
         if "label" not in validation.columns:
-            validation["answer"] = validation.apply(lambda x: labeler.predict_animal_product(x), axis=1)
+            answer = labeler.predict_animal_product(validation)
+            validation["answer"] = answer
             validation["answer"] = validation["answer"].str.strip()
             validation["label"] = np.where(validation["answer"].str.contains("not a relevant product"), 0, 1)
         save_validation_data(validation, f"{project_path}/validation.csv")
