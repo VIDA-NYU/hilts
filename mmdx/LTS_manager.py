@@ -3,15 +3,18 @@ import os
 import pandas as pd
 import numpy as np
 from LTS.main import initialize_LTS
+from LTS.state_manager import write_state
 from LTS.lts_processing import LTS
 import json
 import shutil
 from .search import VectorDB
+import time
+
 multiprocessing.set_start_method('spawn', force=True)
 
 
 class LTSManager:
-    def __init__(self, projectID: str, labeldb: VectorDB):
+    def __init__(self, projectID: str, labeldb: VectorDB, demo: bool):
         self.project_id = projectID
         self.status = False
         self.process = None
@@ -19,6 +22,7 @@ class LTSManager:
         self.project_path = f"data/{self.project_id}"
         self.metrics_path = f"{self.project_path}/metrics.json"
         self.stop_path = f"{self.project_path}/stop.txt"
+        self.demo = demo
 
     def train_model(self, label_hilts):
         process_id = self.process.pid
@@ -54,7 +58,10 @@ class LTSManager:
                 #     # os.remove(self.stop_path)
                 #     print("Training stopped!")
                 #     return # End of LTS process
-                res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, idx, self.project_path, process_path)
+                if not self.demo:
+                    res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, loop, self.project_path, process_path, loop)
+                else:
+                    res = self.get_demo_res(loop, args)
                 if len(res) == 0:
                     csvpath =f"data/{self.project_id}/current_sample_training.csv"
 
@@ -107,9 +114,65 @@ class LTSManager:
                         os.remove(self.stop_path)
                     print("LTS Finished!")
                     return # End of LTS process
-
-        # TODO
+    # TODO
         # elif budget=="metric":
+
+    def get_demo_res(self, loop, args):
+        if loop%2==1:
+            with open(os.path.join(self.project_path, "state.txt"), "w") as f:
+                f.write("LLM Labeling")
+        # if len(res) == 0:
+            csvpath =f"data/{self.project_id}/filename_data_labeled.csv"
+            size = loop*args.get("sample_size")
+            start = size - args.get("sample_size")
+            df = pd.read_csv(csvpath)
+            df = df[start:size]
+            df.to_csv(f"{self.project_path}/current_sample_training.csv", index=False)
+            return {}
+
+        if loop%2==0:
+            # wait for 2 seconds
+            time.sleep(5)
+            # Check if the keys in `res` contain "eval_"
+            # read from epoch_training.json
+            epoch_file = os.path.join(self.project_path, "epoch_training_demo.json")
+            write_state(self.project_path, "Training")
+            with open(epoch_file, 'r') as file:
+                if os.path.getsize(epoch_file) > 0:
+                    try:
+                        epochs = json.load(file)
+                    except json.JSONDecodeError:
+                        print(f"Malformed JSON in {epoch_file}. Attempting to clean.")
+                        epochs = LTSManager.clean_json(epoch_file) or {}
+                else:
+                    print(f"Warning: {epoch_file} is empty.")
+                    epochs = {}
+            # based on the loop number get the last epoch result and save in the epoch path so the get_epoch will work
+            total_loops = epochs.get(str(loop), [])
+            print(f"Processing loop {loop}...")
+            for train in total_loops:
+                # Simulate saving epoch data for the current loop
+                self.save_epoch_for_loop(train)
+                # read from metrics.json
+            metrics_file = os.path.join(self.project_path, "metrics_demo.json")
+            if os.path.exists(metrics_file):
+                with open(metrics_file, "r") as json_file:
+                    result_json_demo = json.load(json_file)
+
+            # get the result from the loop number
+            res = result_json_demo[loop]
+
+            result = {
+                "step": [loop],
+                "precision": [res["precision"][loop-1]],
+                "recall": [res["recall"][loop-1]],
+                "f1_score": [res["f1_score"][loop-1]],
+                "accuracy": [res["accuracy"][loop-1]],
+            }
+            return result
+        else:
+            return None
+
 
 
     def start_training(self, label_hits, db):
@@ -362,6 +425,29 @@ class LTSManager:
         except Exception as e:
             print(f"Failed to clean JSON file {file_path}: {e}")
             return None
+
+    def save_epoch_for_loop(self, train_res):
+        """
+        Simulate saving the epoch data for a specific loop in the process path.
+
+        Args:
+            loop (int): The current loop number.
+            process_path (str): The path where the epoch data should be saved.
+        """
+        # Path to the epoch_training.json file
+        log_epoch_file = os.path.join(self.process_path, "log", "epoch.json")
+
+        # Ensure the log directory exists
+        os.makedirs(os.path.dirname(log_epoch_file), exist_ok=True)
+
+            # Retrieve the epoch data for the current loop
+        if train_res:
+            # Save the epoch data to the log/epoch.json file
+            with open(log_epoch_file, "w") as log_file:
+                json.dump(train_res, log_file, indent=4)
+            print(f"Saved epoch data to {log_epoch_file}")
+        else:
+            print(f"No epoch data found")
 
 
 

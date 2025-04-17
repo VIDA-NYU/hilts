@@ -6,7 +6,7 @@ from .utils import load_and_save_csv
 from .config import update_config
 from .state_manager import write_state
 
-def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, indx, project_path, process_path):
+def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, balance, metric, baseline, labeling, loop, project_path, process_path):
     training_data, chosen_bandit = sampler.get_sample_data(data, sample_size, filter_label, trainer, labeling, filename, project_path)
     if training_data.empty:
         return None
@@ -48,9 +48,9 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
     # not retrain but fine-tune best model
     if improved:
         print(f"Model improved")
-        model_name = f"{project_path}/models/fine_tunned_{indx}_bandit_{chosen_bandit}"
+        model_name = f"{project_path}/models/fine_tunned_{loop}_bandit_{chosen_bandit}"
         trainer.update_model(model_name, results[f"eval_{metric}"], save_model=True)
-        update_config(project_path, {"model_finetune": model_name, "bugetValue": indx, "baseline": baseline})
+        update_config(project_path, {"model_finetune": model_name, "bugetValue": loop, "baseline": baseline})
         # save separated training data file
         name = f'{project_path}/{filename}_training_data'
         load_and_save_csv(name, training_data)
