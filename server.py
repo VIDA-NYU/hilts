@@ -14,12 +14,12 @@ from mmdx.settings import (
     SECRET_KEY,
     DATA_SOURCE,
     LOAD_DATA,
+    DEMO,
 )
 from mmdx.s3_client import S3Client
 from mmdx.LTS_manager import LTSManager
 from io import BytesIO
 import json
-import multiprocessing
 
 
 
@@ -52,7 +52,7 @@ def start_training():
     project_id = args["projectId"]
     label_hilts = args.get("labeling")
     global ltsmanager
-    ltsmanager = LTSManager(project_id, db)
+    ltsmanager = LTSManager(project_id, db, DEMO)
     training_process = ltsmanager.start_training(label_hilts, db)
     return jsonify({
         'message': 'Training started!',
