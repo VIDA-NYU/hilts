@@ -26,7 +26,8 @@ class LTSManager:
 
     def train_model(self, label_hilts):
         process_id = self.process.pid
-        process_path = f"{self.project_path}/{process_id}"
+        self.process_path = f"{self.project_path}/{process_id}"
+        print(f"process_path inside train: {self.process_path}")
 
         print(f"processid: {process_id}")
 
@@ -43,21 +44,15 @@ class LTSManager:
                 if os.path.exists(self.metrics_path):
                     result_json = self.get_metrics(self.project_path)
                     loop = max(result_json["step"]) + 1
-                with open(process_path + "/loop.txt", "w") as f:
+                with open(self.process_path + "/loop.txt", "w") as f:
                     f.write(str(loop))
-                log_path = f"{process_path}/log/"
+                log_path = f"{self.process_path}/log/"
                 self.remove_dirc(log_path)
                 if idx == 0 and label_hilts =="file":
                     label = label_hilts
                     # stop_on += 1
                 else:
                     label = args.get("labeling")
-                # if idx+1 == stop_on:
-                # # if os.path.exists(self.stop_path):
-                #     # print(f"Removing Stop file {self.stop_path}")
-                #     # os.remove(self.stop_path)
-                #     print("Training stopped!")
-                #     return # End of LTS process
                 if not self.demo:
                     res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, loop, self.project_path, process_path, loop)
                 else:
@@ -184,8 +179,9 @@ class LTSManager:
         self.process_id = self.process.pid
         print(f"Training process started with PID: {self.process_id}")
 
+
         # # Save the process ID to a file # DO I NEED THIS?
-        self.process_path = f"{self.project_path}/{self.process.pid}"
+        self.process_path = f"{self.project_path}/{self.process_id}"
         os.makedirs(self.process_path, exist_ok=True)
         # Return the training process
         return self.process
