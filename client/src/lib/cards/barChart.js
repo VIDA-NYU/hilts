@@ -1,82 +1,74 @@
-import * as d3 from 'd3';
+import embed from "vega-embed";
+import { navigate } from "svelte-routing"; // Import navigate for navigation
 
-export function createchartSeller(sortedSellers) {
+export function createBarChart(container, sortedSellers) {
+  // Remove the existing chart if it exists
+  const barChartContainer = document.getElementById(container);
+  barChartContainer.innerHTML = "";
 
-  sortedSellers = sortedSellers.slice(0, 10)
+  // Sort sellers by count in descending order
+  sortedSellers = sortedSellers.sort((a, b) => b.count - a.count);
 
-  // Set up chart dimensions and margins
-  const margin = { top: 100, right: 150, bottom: 150, left: 300 };
+  // Limit to the top 10 sellers
+  sortedSellers = sortedSellers.slice(0, 10);
 
-  d3.select("div#barchart").select('svg').remove();
+  // Define the Vega-Lite specification
+  const spec = {
+    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    description: "Bar Chart of Sellers",
+    width: 350, // Chart width
+    height: 250, // Chart height
+    data: {
+      values: sortedSellers,
+    },
+    mark: {
+      type: "bar",
+      tooltip: true,
+    },
+    encoding: {
+      x: {
+        field: "seller",
+        type: "ordinal",
+        sort: "-y", // Explicitly sort by the y-axis (count) in descending order
+        axis: {
+          title: "Sellers",
+          titleFontSize: 16,
+          labelFontSize: 12,
+          labelAngle: -45, // Rotate labels for better readability
+        },
+      },
+      y: {
+        field: "count",
+        type: "quantitative",
+        axis: {
+          title: "Count",
+          titleFontSize: 16,
+          labelFontSize: 12,
+        },
+      },
+      color: {
+        field: "count", // Use count to determine the color intensity
+        type: "quantitative",
+        scale: { scheme: "purples" }, // Use the "purples" color scheme
+        legend: null, // Remove the color legend
+      },
+    },
+    title: {
+      text: "Sellers of Selected Product and Animal",
+      fontSize: 20,
+      fontWeight: "bold",
+      anchor: "middle",
+    },
+  };
 
-  const svg = d3.select("div#barchart")
-    .append("svg")
-    .attr("preserveAspectRatio", "xMinYMin meet")
-    .attr("viewBox", "-150 -150 1500 1000")
-    .classed("svg-content-responsive", true);
-
-  const svgNode = svg.node();
-  const width = svgNode.getBoundingClientRect().width;
-  const height = svgNode.getBoundingClientRect().height;
-
-  // Set up scales for x and y axes
-  const x = d3.scaleBand()
-    .domain(sortedSellers.map(d => d.seller))
-    .range([0, width])
-    .padding(0.1);
-
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(sortedSellers, d => d.count)])
-    .nice()
-    .range([height, 0]);
-
-  // Create the bars
-  svg.selectAll(".bar")
-    .data(sortedSellers)
-    .enter()
-    .append("rect")
-    .attr("class", "bar")
-    .attr("x", d => x(d.seller))
-    .attr("y", d => y(d.count))
-    .attr("width", x.bandwidth())
-    .attr("height", d => height - y(d.count))
-    .attr("fill", "#4a90e2");
-
-  // Add x-axis
-  svg.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .style("text-anchor", "end")
-    .style("font-size", "26px")
-    .attr("transform", "rotate(-65)")
-
-  // Add y-axis
-  svg.append("g")
-    .attr("class", "y-axis")
-    .call(d3.axisLeft(y))
-    .attr("font-size", "20px");
-
-  // Add axis labels
-  // svg.append("text")
-  //   .attr("x", width / 2)
-  //   .attr("y", height + margin.bottom + 5)
-  //   .style("text-anchor", "middle")
-  //   .text("Sellers");
-
-  // svg.append("text")
-  //   .attr("transform", "rotate(-90)")
-  //   .attr("x", -height / 2)
-  //   .attr("y", -margin.left + 10)
-  //   .style("text-anchor", "middle")
-  //   .text("Count");
-
-  svg.append("text")
-    .attr("x", (width + margin.left - margin.right) / 2)
-    .attr("y", (margin.top - margin.bottom))
-    .attr("text-anchor", "middle")
-    .attr("font-size", "35px")
-    .attr("font-weight", "bold")
-    .text("Sellers of selected product and Animal");
+  // Embed the Vega-Lite chart
+  embed(barChartContainer, spec, { actions: false }).then((result) => {
+    // Add click event listener
+    result.view.addEventListener("click", (event, item) => {
+      if (item && item.datum) {
+        const seller = item.datum.seller; // Get the seller from the clicked bar
+        navigate(`/search/seller?q=${encodeURIComponent(seller)}`);
+      }
+    });
+  });
 }

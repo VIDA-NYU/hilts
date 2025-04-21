@@ -162,15 +162,15 @@
     clearInterval(interval);
   });
 
-  async function interference() {
-    try {
-      responseMessage = await api.stopTraining({ projectId: projectId });
-    } catch (error) {
-      responseMessage = `Error stopping model training: ${error.message}`;
-    }
-    disableBottom = true;
-    isTrainingInProgress = true;
-  }
+  // async function interference() {
+  //   try {
+  //     responseMessage = await api.stopTraining({ projectId: projectId });
+  //   } catch (error) {
+  //     responseMessage = `Error stopping model training: ${error.message}`;
+  //   }
+  //   disableBottom = true;
+  //   isTrainingInProgress = true;
+  // }
 
   export let location: Location;
   $: {
@@ -178,15 +178,15 @@
 
 </script>
 
-<div class="container-fluid">
-  <div class="row m-3">
+<div class="container-fluid m-3">
+  <div class="row">
     <div class="col-2">
       <div class="card">
         <div class="card-header bg-primary text-white">LTS Status:
             {isRunning ? "Running" : "Not running"}</div>
       </div>
       {#if states.length > 0}
-        <div class="stepper m-3">
+        <div class="stepper">
           {#each states as step, index (step)}
             <div
               class="step"
@@ -242,7 +242,7 @@
   </div>
     {#if isTraining || Object.entries(epochs).length > 0}
       <div class="col-4">
-        <div class="card m-3 fixed-card">
+        <div class="card">
           <div class="card-header bg-primary text-white justify-content-between">LTS: Training Logs
             <!-- <button
               class="btn btn-light mb-2 m-2"
@@ -252,19 +252,19 @@
               <span class="fa fa-pause" />
               Stop LTS
             </button> -->
-            {#if isTrainingInProgress}
+            <!-- {#if isTrainingInProgress}
             <span>
               <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
               Waiting for current training to finish...
             </span>
-            {/if}
+            {/if} -->
           </div>
-          <div class="log-container">
-            <div class="log-epoch">
+          <!-- <div class="log-container"> -->
+            <!-- <div class="log-epoch"> -->
               <div class="epoch">
                 {#each Object.entries(epochs).reverse() as [loopNumber, epochsForLoop]}
-                  <div class="row mb-3">
-                    <h5>Training {loopNumber} Results</h5>
+                  <div class="row">
+                    <h6>Training #{loopNumber}:</h6>
                     <table class="table table-striped table-primary">
                       <thead>
                         <tr>
@@ -294,10 +294,10 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        <!-- </div> -->
+      <!-- </div> -->
       <div class="col-4">
-        <div class="card m-3">
+        <div class="card">
           <div class="card-header bg-primary text-white justify-content-between align-items-center">Model Metrics</div>
         </div>
         <svg id="chart" style="width: 100%; height: 400px;"></svg>
