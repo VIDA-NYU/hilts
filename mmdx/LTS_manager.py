@@ -9,6 +9,8 @@ import json
 import shutil
 from .search import VectorDB
 import time
+from LTS.config import update_config
+
 
 multiprocessing.set_start_method('spawn', force=True)
 
@@ -31,7 +33,7 @@ class LTSManager:
 
         print(f"processid: {process_id}")
 
-        args, sampler, data, trainer, labeler = initialize_LTS(self.project_path)
+        args, sampler, data, trainer, labeler = initialize_LTS(self.project_path, self.demo)
 
         budget = args.get("budget")
         budget_value = int(args.get("bugetValue"))
@@ -114,6 +116,20 @@ class LTSManager:
 
     def get_demo_res(self, loop, args, label):
         if label != "file":
+            if loop == 1:
+                # remove any existing state.txt file
+                if os.path.exists(os.path.join(self.project_path, "current_sample_training.csv")):
+                    os.remove(os.path.join(self.project_path, "current_sample_training.csv"))
+                if os.path.exists(os.path.join(self.project_path, "epoch_training.json")):
+                    os.remove(os.path.join(self.project_path, "epoch_training.json"))
+                if os.path.exists(os.path.join(self.project_path, "metrics.json")):
+                    os.remove(os.path.join(self.project_path, "metrics.json"))
+                if os.path.exists(os.path.join(self.project_path, "labels.db")):
+                    os.remove(os.path.join(self.project_path, "labels.db"))
+                if os.path.exists(os.path.join(self.project_path, "hilts")):
+                    os.remove(os.path.join(self.project_path, "hilts"))
+                if os.path.exists(os.path.join(self.project_path, "hilts_data.csv")):
+                    os.remove(os.path.join(self.project_path, "hilts_data.csv"))
             with open(os.path.join(self.project_path, "state.txt"), "w") as f:
                 f.write("LLM Labeling")
             csvpath =f"data/{self.project_id}/filename_data_labeled.csv"
@@ -152,6 +168,8 @@ class LTSManager:
             if os.path.exists(metrics_file):
                 with open(metrics_file, "r") as json_file:
                     result_json_demo = json.load(json_file)
+            update_config(self.project_path, {"model_finetune": args.model_name, "bugetValue": loop, "baseline": args.baseline})
+
 
             # get the result from the loop number
 

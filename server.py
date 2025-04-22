@@ -123,6 +123,15 @@ def set_labels_db():
     db.set_label_db(project_id)
     return {'message': 'db set'}
 
+@app.route("/api/v1/connect_db", methods=['POST'])
+def connect_labels_db():
+    data = request.get_json()
+    project_id = data.get('projectId')
+    if not os.path.exists(f"data/{project_id}"):
+        return {'message': 'db not found'}
+    db.set_label_db(project_id)
+    return {'message': 'db set'}
+
 @app.route("/api/v1/get_status/", methods=['GET'])
 def get_training_results() -> pd.DataFrame:
     # manager = LTSManager(projectId) ## should make it global?

@@ -2,22 +2,26 @@ import pandas as pd
 import numpy as np
 import os
 import json
+import time
 from .random_sampling import RandomSampler
 from .fine_tune import BertFineTuner
 from .thompson_sampling import ThompsonSampler
 from .clustering import TextClustering
 from .state_manager import write_state
 
-def create_clustered_data(preprocessor, algorithm, cluster_size, project_path):
+def create_clustered_data(preprocessor, algorithm, cluster_size, project_path, demo):
     """
     Load data from a CSV file and apply LDA if necessary.
     Returns the processed DataFrame.
     """
+
     try:
         data = pd.read_csv(f"{project_path}/filename_cluster_data.csv")
         print("Using data saved on disk")
     except FileNotFoundError:
         write_state(project_path, "Clustering Data")
+        if demo:
+            time.sleep(5)
         data = pd.read_csv(f"{project_path}/filename.csv")
         data = preprocessor.preprocess_df(data)
 
@@ -74,7 +78,10 @@ def print_summary(sampler):
     print(sampler.wins)
     print(sampler.losses)
 
-def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path):
+def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path, demo):
+    if demo:
+        write_state(project_path, "Creating Validation")
+        time.sleep(5)
     if os.path.exists(f'{project_path}/validation.csv'):
         validation = pd.read_csv(f'{project_path}/validation.csv')
     elif validation_path:

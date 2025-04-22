@@ -9,7 +9,7 @@ from .utils import create_clustered_data, prepare_validation, initialize_trainer
 
 nltk.download('punkt')
 
-def initialize_LTS(project_path):
+def initialize_LTS(project_path, demo=False):
 
     args = parse_args(project_path)
 
@@ -32,13 +32,13 @@ def initialize_LTS(project_path):
     # Load data
     preprocessor = TextPreprocessor()
 
-    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, project_path)
+    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, project_path, demo)
 
     # Set up labeling and validation
     labeler = Labeling(label_model=labeling,model_name=model_name, prompt=prompt)
     labeler.set_model()
 
-    validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path)
+    validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path, demo)
 
     # Initialize fine-tuner and sampler
     write_state(project_path, "Loading Base Model")

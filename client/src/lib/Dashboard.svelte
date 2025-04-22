@@ -22,6 +22,7 @@
   let graphData = $dataGraph; // Reactive store value
   let productsCount = 25; //$products || 5;
   let speciesCount = 25; //$species|| 5;
+  let projectMessage="";
 
   let minValue = 0;
   let maxValue = 1000000;
@@ -80,6 +81,12 @@
   async function getData() {
     const response = await api.getData(projectId);
     chartData = response;
+
+    try {
+      projectMessage = await api.connectLabelsDb(projectId);
+    } catch (error) {
+      projectMessage = `Error setting labels db: ${error.message}`;
+    }
 
     createChart(chartData, productsCount, speciesCount, HandleClick);
     dataGraph.set({
