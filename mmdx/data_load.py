@@ -92,11 +92,13 @@ def embed_image_files(
     data_path: str,
     image_paths: List[str],
     S3_Client: Optional[S3Client],
+    title: str,
 ):
     embeddings = []
     for path in image_paths:
         try:
             if isinstance(S3_Client, S3Client):
+                # raise FileNotFoundError
                 image_data = S3_Client.get_obj(data_path, path)
                 image_buffer = BytesIO(image_data.read())
                 embedding = model.embed_image_path(image_buffer)
@@ -106,8 +108,9 @@ def embed_image_files(
                 )
             embeddings.append((path, embedding))
         except FileNotFoundError as e:
-            print(f"Image file not found: {path}")
-            embeddings.append((path, None))
+            # print(f"Image file not found: {path}")
+            emb = model.embed_text(title)
+            embeddings.append((path, emb))
         except IOError as e:
             print(f"Error reading image file {path}: {str(e)}")
             embeddings.append((path, None))
@@ -190,33 +193,34 @@ def make_df(
         print("getting images from local folder")
         image_files, df= load_images_from_path(data_path)
 
-    # titles = []
-    # image_paths = []
-    # vectors = []
-    # metadatas = []
-    # for image_path in tqdm.tqdm(image_files):
-    #     image_path, embedding = embed_image_files(
-    #         model, data_path, [image_path], S3_Client
-    #     )[0]
-    #     if embedding is not None:
-    #         vectors.append(embedding)
-    #         image_paths.append(image_path)
-    #         titles.append(df.loc[df["image_path"] == image_path, "title"].values[0])
-    #         metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
+    titles = []
+    image_paths = []
+    vectors = []
+    metadatas = []
+    for image_path in tqdm.tqdm(image_files):
+        title = df.loc[df["image_path"] == image_path, "title"].values[0]
+        image_path, embedding = embed_image_files(
+            model, data_path, [image_path], S3_Client, title
+        )[0]
+        if embedding is not None:
+            vectors.append(embedding)
+            image_paths.append(image_path)
+            titles.append(df.loc[df["image_path"] == image_path, "title"].values[0])
+            metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
 
     #TODO: MODIFY THIS TO EMBEDDINGS
-    emb = np.random.rand(512).astype(np.float32)
-    df["vector"] = [emb] * len(df)
-    df = df[["image_path", "title", "metadata", "vector"]]
+    # emb = np.random.rand(512).astype(np.float32)
+    # df["vector"] = [emb] * len(df)
+    # df = df[["image_path", "title", "metadata", "vector"]]
 
-    # df = pd.DataFrame(
-    #     {
-    #         "title": titles,
-    #         "metadata": metadatas,
-    #         "image_path": image_paths,
-    #         "vector": vectors,
-    #     }
-    # )
+    df = pd.DataFrame(
+        {
+            "title": titles,
+            "metadata": metadatas,
+            "image_path": image_paths,
+            "vector": vectors,
+        }
+    )
     df['metadata'] = df['metadata'].apply(clean_and_validate_json)
     # print(f"Vector: {df['vector']}")
     return df

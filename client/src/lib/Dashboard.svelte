@@ -3,8 +3,10 @@
   import type { Hit } from "./Api";
   import { onMount } from "svelte";
   import { createChart } from "./cards/heatMap";
-  import { createchartSeller } from "./cards/barChart";
   import ImageCard from "./ImageCard.svelte";
+  import embed from "vega-embed";
+  import { navigate } from "svelte-routing"; // Import navigate for navigation
+
 
   // import { createVisualization } from './cards/imagesChart'
 
@@ -18,8 +20,9 @@
   let imagePaths = [];
   let hits: Hit[];
   let graphData = $dataGraph; // Reactive store value
-  let productsCount = 5; //$products || 5;
-  let speciesCount = 5; //$species|| 5;
+  let productsCount = 25; //$products || 5;
+  let speciesCount = 25; //$species|| 5;
+  let projectMessage="";
 
   let minValue = 0;
   let maxValue = 1000000;
@@ -41,9 +44,10 @@
     projectId = name;
   });
 
-  function HandleClick(data, matchingData) {
+  function HandleClick(matchingImages, matchingData) {
+    // Process images (if needed)
     imagePaths = [];
-    data.slice(0, 4).forEach((item) => {
+    matchingImages.slice(0, 4).forEach((item) => {
       imagePaths.push(item.split("/").pop());
     });
 
@@ -55,15 +59,34 @@
         metadata: "",
         labels_types_dict: {},
       }));
-
-      countSellers(matchingData);
-      createchartSeller(sortedSellers);
     }
+
+    // Count sellers in the matching data
+    const sellers = {};
+    matchingData.forEach((item) => {
+      if (item.seller) {
+        sellers[item.seller] = (sellers[item.seller] || 0) + 1;
+      }
+    });
+
+    // Convert sellers object to an array and sort by count
+    const sortedSellers = Object.entries(sellers)
+      .map(([seller, count]) => ({ seller, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Call createBarChart with the updated seller data
+    createBarChart("barchart", sortedSellers);
   }
 
   async function getData() {
     const response = await api.getData(projectId);
     chartData = response;
+
+    try {
+      projectMessage = await api.connectLabelsDb(projectId);
+    } catch (error) {
+      projectMessage = `Error setting labels db: ${error.message}`;
+    }
 
     createChart(chartData, productsCount, speciesCount, HandleClick);
     dataGraph.set({
@@ -86,12 +109,89 @@
       .sort((a, b) => b[1] - a[1]) // Sort by count (second value of each entry)
       .map((entry) => ({ seller: entry[0], count: entry[1] }));
   }
+
+  export function createBarChart(container, sortedSellers) {
+    // Remove the existing chart if it exists
+    const barChartContainer = document.getElementById(container);
+    barChartContainer.innerHTML = "";
+
+    // Sort sellers by count in descending order
+    sortedSellers = sortedSellers.sort((a, b) => b.count - a.count);
+
+    // Limit to the top 10 sellers
+    sortedSellers = sortedSellers.slice(0, 10);
+
+    // Define the Vega-Lite specification
+    const spec = {
+      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      description: "Bar Chart of Sellers",
+      width: 250, // Chart width
+      height: 150, // Chart height
+      data: {
+        values: sortedSellers,
+      },
+      mark: {
+        type: "bar",
+        tooltip: true,
+      },
+      encoding: {
+        x: {
+          field: "seller",
+          type: "ordinal",
+          sort: "-y", // Explicitly sort by the y-axis (count) in descending order
+          axis: {
+            title: "Sellers",
+            titleFontSize: 16,
+            labelFontSize: 12,
+            labelAngle: -45, // Rotate labels for better readability
+          },
+        },
+        y: {
+          field: "count",
+          type: "quantitative",
+          axis: {
+            title: "Count",
+            titleFontSize: 16,
+            labelFontSize: 12,
+          },
+        },
+        color: {
+          field: "count", // Use count to determine the color intensity
+          type: "quantitative",
+          scale: { scheme: "purples" }, // Use the "purples" color scheme
+          legend: {
+            title: "Count",
+            titleFontSize: 16,
+            labelFontSize: 12,
+          },
+        },
+      },
+      // title: {
+      //   text: "Sellers of Selected Product and Animal",
+      //   fontSize: 18,
+      //   fontWeight: "bold",
+      //   anchor: "middle",
+      // },
+    };
+
+    // Embed the Vega-Lite chart
+    embed(barChartContainer, spec, { actions: false }).then((result) => {
+      // Add click event listener
+      result.view.addEventListener("click", (event, item) => {
+        if (item && item.datum) {
+          console.log("Clicked bar:", item.datum);
+          navigate(`/search/seller?q=${encodeURIComponent(item.datum.seller)}`);
+          // Add custom click handling logic here
+        }
+      });
+    });
+  }
 </script>
 
-<div class="container-fluid">
+<div class="container-fluid m-3">
   <!-- First Column (smaller) -->
   <div class="col-2">
-    <div class="card m-2">
+    <div class="card">
       <div class="card-header bg-primary text-white">Filters</div>
       <div class="card-body">
         <div class="w-full xl:w-4/12 mt-6">
@@ -182,14 +282,14 @@
 
         <h1>test</h1>
       </div> -->
-  <div class="col-8">
+  <div class="col-10">
     <div class="row">
-      <div class="col-5">
+      <div class="col-6">
         <!-- <div class="card m-2"> -->
         <div id="heatmap" class="__svg-container"></div>
       <!-- </div> -->
     </div>
-      <div class="col-5">
+      <div class="col-6">
         <!-- <div class="card m-2"> -->
         <!-- <h3>Visualization Area 2</h3> -->
         <div id="barchart" class="__svg-container"></div>

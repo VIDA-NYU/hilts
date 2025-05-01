@@ -14,12 +14,12 @@ from mmdx.settings import (
     SECRET_KEY,
     DATA_SOURCE,
     LOAD_DATA,
+    DEMO,
 )
 from mmdx.s3_client import S3Client
 from mmdx.LTS_manager import LTSManager
 from io import BytesIO
 import json
-import multiprocessing
 
 
 
@@ -52,7 +52,7 @@ def start_training():
     project_id = args["projectId"]
     label_hilts = args.get("labeling")
     global ltsmanager
-    ltsmanager = LTSManager(project_id, db)
+    ltsmanager = LTSManager(project_id, db, DEMO)
     training_process = ltsmanager.start_training(label_hilts, db)
     return jsonify({
         'message': 'Training started!',
@@ -120,6 +120,15 @@ def set_labels_db():
         os.makedirs(f"data/{project_id}")
     if not os.path.exists(f"data/{project_id}/hilts"):
         os.makedirs(f"data/{project_id}/hilts")
+    db.set_label_db(project_id)
+    return {'message': 'db set'}
+
+@app.route("/api/v1/connect_db", methods=['POST'])
+def connect_labels_db():
+    data = request.get_json()
+    project_id = data.get('projectId')
+    if not os.path.exists(f"data/{project_id}"):
+        return {'message': 'db not found'}
     db.set_label_db(project_id)
     return {'message': 'db set'}
 

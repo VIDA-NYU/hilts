@@ -32,6 +32,7 @@ class LabelsDB:
         self.create_tables(cursor)
 
     def create_tables(self, cursor):
+        print("Creating tables")
         for table in self.tables:
             cursor.execute(
                 f"""
@@ -44,6 +45,7 @@ class LabelsDB:
 
     def add(self, image_path: str, label: str, table: str):
         conn, cursor = get_db_connection(self.db_file)
+        print(f"db file {self.db_file}")
         cursor.execute(
             f"INSERT INTO {table} (image_path, label) VALUES (?, ?);",
             (image_path, label),

@@ -291,6 +291,30 @@ export async function setLabelsDb(
   return responseMessage;
 }
 
+export async function connectLabelsDb(
+  projectId: object
+) {
+  const url = `${API_URL}/connect_db`;
+  let responseMessage = "";
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({ projectId: projectId }),
+      headers: { "Content-Type": "application/json" },
+    });
+    if (response.ok) {
+      const responseData = await response.json();
+      responseMessage = "Project DB connected!";
+    } else {
+      responseMessage = "Failed to set db";
+    }
+  } catch (error) {
+    responseMessage = "Error setting DB";
+  }
+  return responseMessage;
+}
+
 export async function stopTraining(
   argsDict: object
 ) {
