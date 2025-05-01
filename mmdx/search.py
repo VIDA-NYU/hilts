@@ -117,7 +117,8 @@ class VectorDB:
                 limit = config["humanLabels"]
 
             df = pd.read_csv(self.csvpath)
-            image_paths = [path for path in df["image_path"].to_list() if path not in previous]
+            balanced_df = VectorDB.select_balanced_rows(df, limit)
+            image_paths = [path for path in balanced_df["image_path"].to_list() if path not in previous]
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
             print(image_path_list_str)
             df_hits = duckdb.sql(
@@ -167,6 +168,35 @@ class VectorDB:
             return df_hits
         else:
             return self.random_search(limit)
+
+    @staticmethod
+    def select_balanced_rows(df, limit):
+        # Split the DataFrame into two subsets based on the "label" column
+        label_1 = df[df["label"] == 1]
+        label_0 = df[df["label"] == 0]
+
+        # Calculate the number of rows to select from each subset
+        half_limit = limit // 2
+
+        # Select rows from each subset
+        selected_label_1 = label_1.sample(n=min(half_limit, len(label_1)), random_state=42)
+        selected_label_0 = label_0.sample(n=min(half_limit, len(label_0)), random_state=42)
+
+        # Combine the selected rows
+        balanced_df = pd.concat([selected_label_1, selected_label_0])
+
+        # If the combined DataFrame has fewer rows than the limit, add random samples
+        remaining_rows = limit - len(balanced_df)
+        if remaining_rows > 0:
+            # Exclude already selected rows
+            remaining_df = df[~df.index.isin(balanced_df.index)]
+            additional_samples = remaining_df.sample(n=min(remaining_rows, len(remaining_df)), random_state=42)
+            balanced_df = pd.concat([balanced_df, additional_samples])
+
+        # Shuffle the combined DataFrame
+        balanced_df = balanced_df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+        return balanced_df
 
     def random_search(self, limit: int) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()

@@ -9,7 +9,7 @@ from .thompson_sampling import ThompsonSampler
 from .clustering import TextClustering
 from .state_manager import write_state
 
-def create_clustered_data(preprocessor, algorithm, cluster_size, project_path, demo):
+def create_clustered_data(preprocessor, algorithm, cluster_size, project_path, demo, loop):
     """
     Load data from a CSV file and apply LDA if necessary.
     Returns the processed DataFrame.
@@ -18,10 +18,11 @@ def create_clustered_data(preprocessor, algorithm, cluster_size, project_path, d
     try:
         data = pd.read_csv(f"{project_path}/filename_cluster_data.csv")
         print("Using data saved on disk")
+        if demo and loop == 0:
+            write_state(project_path, "Clustering Data")
+            time.sleep(5)
     except FileNotFoundError:
         write_state(project_path, "Clustering Data")
-        if demo:
-            time.sleep(5)
         data = pd.read_csv(f"{project_path}/filename.csv")
         data = preprocessor.preprocess_df(data)
 
@@ -78,8 +79,8 @@ def print_summary(sampler):
     print(sampler.wins)
     print(sampler.losses)
 
-def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path, demo):
-    if demo:
+def prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path, demo, loop):
+    if demo and loop == 0:
         write_state(project_path, "Creating Validation")
         time.sleep(5)
     if os.path.exists(f'{project_path}/validation.csv'):

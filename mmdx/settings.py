@@ -2,7 +2,8 @@ import os
 from dotenv import load_dotenv
 from typing import Optional, Tuple
 
-load_dotenv()  # take environment variables from .env.
+res = load_dotenv()  # take environment variables from .env.
+print(f"env {res}")
 print(os.getenv("DB_DELETE_EXISTING"))
 
 

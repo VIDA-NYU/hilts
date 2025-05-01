@@ -48,6 +48,8 @@ class LTSManager:
                     loop = max(result_json["step"]) + 1
                 with open(self.process_path + "/loop.txt", "w") as f:
                     f.write(str(loop))
+                with open(self.project_path + "/loop.txt", "w") as f:
+                    f.write(str(loop))
                 log_path = f"{self.process_path}/log/"
                 self.remove_dirc(log_path)
                 if idx == 0 and label_hilts =="file":
@@ -56,7 +58,7 @@ class LTSManager:
                 else:
                     label = args.get("labeling")
                 if not self.demo:
-                    res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, loop, self.project_path, process_path, loop)
+                    res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, loop, self.project_path, self.process_path, loop)
                 else:
                     res = self.get_demo_res(loop, args, label)
                 if len(res) == 0:
@@ -116,20 +118,20 @@ class LTSManager:
 
     def get_demo_res(self, loop, args, label):
         if label != "file":
-            if loop == 1:
-                # remove any existing state.txt file
-                if os.path.exists(os.path.join(self.project_path, "current_sample_training.csv")):
-                    os.remove(os.path.join(self.project_path, "current_sample_training.csv"))
-                if os.path.exists(os.path.join(self.project_path, "epoch_training.json")):
-                    os.remove(os.path.join(self.project_path, "epoch_training.json"))
-                if os.path.exists(os.path.join(self.project_path, "metrics.json")):
-                    os.remove(os.path.join(self.project_path, "metrics.json"))
-                if os.path.exists(os.path.join(self.project_path, "labels.db")):
-                    os.remove(os.path.join(self.project_path, "labels.db"))
-                if os.path.exists(os.path.join(self.project_path, "hilts")):
-                    os.remove(os.path.join(self.project_path, "hilts"))
-                if os.path.exists(os.path.join(self.project_path, "hilts_data.csv")):
-                    os.remove(os.path.join(self.project_path, "hilts_data.csv"))
+            # if loop == 1:
+                # # remove any existing state.txt file
+                # if os.path.exists(os.path.join(self.project_path, "current_sample_training.csv")):
+                #     os.remove(os.path.join(self.project_path, "current_sample_training.csv"))
+                # if os.path.exists(os.path.join(self.project_path, "epoch_training.json")):
+                #     os.remove(os.path.join(self.project_path, "epoch_training.json"))
+                # if os.path.exists(os.path.join(self.project_path, "metrics.json")):
+                #     os.remove(os.path.join(self.project_path, "metrics.json"))
+                # if os.path.exists(os.path.join(self.project_path, "labels.db")):
+                #     os.remove(os.path.join(self.project_path, "labels.db"))
+                # if os.path.exists(os.path.join(self.project_path, "hilts")):
+                #     os.remove(os.path.join(self.project_path, "hilts"))
+                # if os.path.exists(os.path.join(self.project_path, "hilts_data.csv")):
+                #     os.remove(os.path.join(self.project_path, "hilts_data.csv"))
             with open(os.path.join(self.project_path, "state.txt"), "w") as f:
                 f.write("LLM Labeling")
             csvpath =f"data/{self.project_id}/filename_data_labeled.csv"
@@ -168,7 +170,7 @@ class LTSManager:
             if os.path.exists(metrics_file):
                 with open(metrics_file, "r") as json_file:
                     result_json_demo = json.load(json_file)
-            update_config(self.project_path, {"model_finetune": args.model_name, "bugetValue": loop, "baseline": args.baseline})
+            update_config(self.project_path, {"model_finetune": "bert-base-uncased", "bugetValue": loop, "baseline": 0})
 
 
             # get the result from the loop number

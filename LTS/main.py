@@ -29,16 +29,23 @@ def initialize_LTS(project_path, demo=False):
     model_name = args.get("model_name")
     # model_init = args.get("model_init")
 
+    loop_file = os.path.join(project_path, "loop.txt")
+    if os.path.exists(loop_file):
+        with open(loop_file, "r") as f:
+            loop = int(f.read().strip())
+    else:
+        loop = 0
+
     # Load data
     preprocessor = TextPreprocessor()
 
-    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, project_path, demo)
+    data = create_clustered_data(preprocessor, cluster_algorithm, cluster_size, project_path, demo, loop)
 
     # Set up labeling and validation
     labeler = Labeling(label_model=labeling,model_name=model_name, prompt=prompt)
     labeler.set_model()
 
-    validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path, demo)
+    validation = prepare_validation(validation_path, validation_size, data, labeler, preprocessor, project_path, demo, loop)
 
     # Initialize fine-tuner and sampler
     write_state(project_path, "Loading Base Model")

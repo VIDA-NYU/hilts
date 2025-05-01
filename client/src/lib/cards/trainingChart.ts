@@ -109,7 +109,7 @@ export function createChart(chartData: ChartData, steps_training: string[]): voi
 
     const legend = svg
         .append("g")
-        .attr("transform", `translate(${width - margin.right - 5}, 20)`);
+        .attr("transform", `translate(${margin.left + 1}, ${margin.top})`); // Move legend to the left of the chart
 
     const legendItems = legend
         .selectAll(".legend")

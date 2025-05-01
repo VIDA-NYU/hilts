@@ -36,7 +36,7 @@
   let responseMessageTest = "";
 
   // LTS Generator parameters (added for the modal)
-  let task_prompt = `You are labeling tool to create labels for a classification task .I will provide text data from an advertisement of a product.We are interested in any animal intended to be used for their lether/skin.
+  let task_prompt = `You are labeling tool to create labels for a classification task .I will provide text data from an advertisement of a product.We are interested in any animal intended to be used for their leather/skin.
      Also any product made out these materials are important.
       The product should be classified in two labels:
       Label 1: relevant product - if the product is a animal or a product made of any animal leather or skin.
