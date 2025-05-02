@@ -10,6 +10,12 @@ import shutil
 from .search import VectorDB
 import time
 from LTS.config import update_config
+from mmdx.settings import (
+    DATA_PATH,
+    DB_PATH,
+)
+from mmdx.model import ClipModel
+
 
 
 multiprocessing.set_start_method('spawn', force=True)
@@ -20,13 +26,25 @@ class LTSManager:
         self.project_id = projectID
         self.status = False
         self.process = None
-        self.labeldb = labeldb
+        # self.labeldb = labeldb
         self.project_path = f"data/{self.project_id}"
         self.metrics_path = f"{self.project_path}/metrics.json"
         self.stop_path = f"{self.project_path}/stop.txt"
         self.demo = demo
 
     def train_model(self, label_hilts):
+        # Reinitialize the VectorDB object in the child process
+        model = ClipModel()
+        labeldb = VectorDB.from_data_path(
+            data_path=DATA_PATH,
+            db_path=DB_PATH,
+            S3_Client=None,  # Pass S3_Client if needed
+            model=model,
+            delete_existing=False,
+        )
+        labeldb.set_label_db(self.project_id)
+
+        # Continue with the rest of your training logic
         process_id = self.process.pid
         self.process_path = f"{self.project_path}/{process_id}"
         print(f"process_path inside train: {self.process_path}")
@@ -69,7 +87,7 @@ class LTSManager:
                         image_paths = df["image_path"].to_list()
                         label_llm = ["animal origin" if label == 1 else "not animal origin" for label in df["label"].to_list()]
                         for path, labelllm in zip(image_paths, label_llm):
-                            self.labeldb.add_label(image_path=path,label= labelllm, table="relevant")
+                            labeldb.add_label(image_path=path,label= labelllm, table="relevant")
                         with open(os.path.join(self.project_path, "state.txt"), "w") as f:
                             f.write("User Labeling")
                     return
@@ -190,19 +208,20 @@ class LTSManager:
     def start_training(self, label_hits):
         """
         Starts the model training in a separate process.
-        :param args: Arguments for model training
         """
-        # Start the training in a new process
-        self.process = multiprocessing.Process(target=self.train_model, args=(label_hits,))
+        # Pass only pickleable arguments to the process
+        self.process = multiprocessing.Process(
+            target=self.train_model,
+            args=(label_hits, ),
+        )
         self.process.start()
         self.status = self.process.is_alive()
         self.process_id = self.process.pid
         print(f"Training process started with PID: {self.process_id}")
 
-        # # Save the process ID to a file # DO I NEED THIS?
+        # Save the process ID to a file
         self.process_path = f"{self.project_path}/{self.process_id}"
         os.makedirs(self.process_path, exist_ok=True)
-        # Return the training process
         return self.process
 
     def get_status(self):

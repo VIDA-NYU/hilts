@@ -5,7 +5,7 @@ import os
 from mmdx.db import LabelsDB
 from mmdx.data_load import find_files_in_path
 from mmdx.search import VectorDB
-from mmdx.model import ClipModel
+from mmdx.model import ClipModel, RandomMockModel
 from mmdx.s3_client import S3Client
 from io import BytesIO
 import duckdb
@@ -76,19 +76,19 @@ def test_similarity_search():
     df = db.vector_embedding_search_hilts(image_embedding, limit=2, include_image_paths=images)
     print(df)
 
-# def test_create_vector_from_path_and_search(tmp_path):
-#     db_path = tmp_path / "test_create_vector_from_path_and_search"
-#     model = RandomMockModel()
-#     db = VectorDB.from_data_path(data_path, db_path, model)
-#     assert db != None
+def test_create_vector_from_path_and_search(tmp_path):
+    db_path = tmp_path / "test_create_vector_from_path_and_search"
+    model = RandomMockModel()
+    db = VectorDB.from_data_path(data_path, db_path,s3_client, model)
+    assert db != None
 
-#     hits = db.search_by_text("example query", limit=3)
-#     assert len(hits.index) == 3
+    hits = db.search_by_text("example query", limit=3)
+    assert len(hits.index) == 3
 
-#     hits = db.search_by_text("example query", limit=5)
-#     assert len(hits.index) == 5
+    hits = db.search_by_text("example query", limit=5)
+    assert len(hits.index) == 5
 
-#     assert isinstance(hits, pd.DataFrame)
+    assert isinstance(hits, pd.DataFrame)
 
 
 # def test_random_search(tmp_path):

@@ -38,6 +38,7 @@ class VectorDB:
         self.model = model
         self.tbl = table
         self.data_path = data_path
+        self.db_path = db_path
         # self.s3_client = s3_client
 
     @staticmethod
@@ -121,7 +122,7 @@ class VectorDB:
             # balanced_df = VectorDB.select_balanced_rows(df, limit) ## for demo
             image_paths = []
             if len(hilts_data) >0: # check if first iteration was done
-                image_paths = self.select_similar_df(df, hilts_data, s3_client)
+                image_paths = self.select_similar_df(df, hilts_data, s3_client, limit=limit)
                 print(f"similarity search: {image_paths}")
             elif image_paths == []:
                 image_paths = [path for path in df["image_path"].to_list() if path not in previous]
@@ -177,8 +178,10 @@ class VectorDB:
             return self.random_search(limit)
 
 
-    def select_similar_df(self, df: pd.DataFrame, hilts_data: dict, S3_client: S3Client) -> List[str]:
+    def select_similar_df(self, df: pd.DataFrame, hilts_data: dict, S3_client: S3Client, limit: int) -> List[str]:
         # remove ads that hilts_data does not have both "human_label" and "llm_label"
+        import random
+
         exclude_path = []
         image_paths_include = []
         for image_path in list(hilts_data.keys()):
@@ -187,6 +190,7 @@ class VectorDB:
             else:
                 image_paths_include.append(image_path)
         image_paths  = []
+        extra_paths = []
         for _ , row in df.iterrows(): ## needs to return this paths
             image_path = row["image_path"]
             label = "not animal origin" if row["label"] == 0 else "animal origin"
@@ -209,15 +213,29 @@ class VectorDB:
                 lambda row: True if row["animal"] == label else False,
                 axis=1
             )
-            print("Label: ", label)
-            print(similar["animal"])
+
+
+
             # majority vote, similar labels are the same, then use that label
-            if similar["same_label"].sum() >= 2:
+            if similar["same_label"].sum() == 3:
                 print("not opposite label")
                 continue
+            elif similar["same_label"].sum() == 2:
+                extra_paths.append(image_path)
             else:
                 image_paths.append(image_path)
                 print("opposite label")
+
+            if len(image_paths) < limit:
+                remaining_rows = limit - len(image_paths)
+                image_paths.extend(random.sample(extra_paths, min(remaining_rows, len(extra_paths))))
+            if len(image_paths) < limit:
+                # Exclude already selected rows
+                remaining_df = df[~df["image_path"].isin(image_paths)]
+                additional_samples = remaining_df.sample(n=min(remaining_rows, len(remaining_df)), random_state=42)
+                paths = additional_samples['image_path'].tolist()
+                image_paths.extend(paths)
+
         return image_paths
 
     # @staticmethod
