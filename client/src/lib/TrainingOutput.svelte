@@ -155,7 +155,7 @@
     getStatus();
     interval = setInterval(() => {
       getStatus();
-    }, 60);
+    }, 6000);
   });
 
   onDestroy(() => {

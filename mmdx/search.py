@@ -32,11 +32,13 @@ class VectorDB:
         table: lancedb.table.Table,
         model: BaseEmbeddingModel,
         data_path: str,
+        # s3_client: Optional[S3Client] = None,
     ) -> None:
         self.db = db
         self.model = model
         self.tbl = table
         self.data_path = data_path
+        # self.s3_client = s3_client
 
     @staticmethod
     def from_data_path(
@@ -49,7 +51,6 @@ class VectorDB:
         batch_size: int = DB_BATCH_SIZE,
     ):
         db = lancedb.connect(db_path)
-
         table_name = DEFAULT_TABLE_NAME
         if delete_existing and table_name in db.table_names():
             print(f"Dropping existing database {table_name}...")
@@ -101,7 +102,7 @@ class VectorDB:
     def get_label_counts(self) -> dict:
         return self.labelsdb.counts()
 
-    def random_hilts_search(self, limit: int) -> pd.DataFrame:
+    def random_hilts_search(self, limit: int, s3_client: S3Client) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
 
         if os.path.exists(self.csvpath):
@@ -116,11 +117,17 @@ class VectorDB:
                 config = json.load(f)
                 limit = config["humanLabels"]
 
-            df = pd.read_csv(self.csvpath)
-            balanced_df = VectorDB.select_balanced_rows(df, limit)
-            image_paths = [path for path in balanced_df["image_path"].to_list() if path not in previous]
+            df = pd.read_csv(self.csvpath) # current_sample_training.csv
+            # balanced_df = VectorDB.select_balanced_rows(df, limit) ## for demo
+            image_paths = []
+            if len(hilts_data) >0: # check if first iteration was done
+                image_paths = self.select_similar_df(df, hilts_data, s3_client)
+                print(f"similarity search: {image_paths}")
+            elif image_paths == []:
+                image_paths = [path for path in df["image_path"].to_list() if path not in previous]
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
-            print(image_path_list_str)
+
+
             df_hits = duckdb.sql(
                 f"""WITH filtered_data AS (
                     SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
@@ -169,34 +176,78 @@ class VectorDB:
         else:
             return self.random_search(limit)
 
-    @staticmethod
-    def select_balanced_rows(df, limit):
-        # Split the DataFrame into two subsets based on the "label" column
-        label_1 = df[df["label"] == 1]
-        label_0 = df[df["label"] == 0]
 
-        # Calculate the number of rows to select from each subset
-        half_limit = limit // 2
+    def select_similar_df(self, df: pd.DataFrame, hilts_data: dict, S3_client: S3Client) -> List[str]:
+        # remove ads that hilts_data does not have both "human_label" and "llm_label"
+        exclude_path = []
+        image_paths_include = []
+        for image_path in list(hilts_data.keys()):
+            if hilts_data[image_path].get("human_label") is None or hilts_data[image_path].get("llm_label") is None:
+                exclude_path.append(image_path)
+            else:
+                image_paths_include.append(image_path)
+        image_paths  = []
+        for _ , row in df.iterrows(): ## needs to return this paths
+            image_path = row["image_path"]
+            label = "not animal origin" if row["label"] == 0 else "animal origin"
+            exclude_path.append(image_path)
+            if S3_client:
+                try:
+                    image_data = S3_client.get_obj(self.data_path, image_path)
+                    image = BytesIO(image_data.read())
+                    image_embedding = self.model.embed_image_path(image)
+                except Exception as e:
+                    print(f"Error loading image {image_path}: {e}")
+                    image_embedding = self.model.embed_text(row["title"])
+            else:
+                image = os.path.join(self.data_path, image_path)
+                image_embedding = self.model.embed_image_path(image)
+            # Select similar rows based on the vectordb search
+            similar = self.vector_embedding_search_hilts(image_embedding, limit=3, include_image_paths=image_paths_include)
 
-        # Select rows from each subset
-        selected_label_1 = label_1.sample(n=min(half_limit, len(label_1)), random_state=42)
-        selected_label_0 = label_0.sample(n=min(half_limit, len(label_0)), random_state=42)
+            similar["same_label"] = similar.apply(
+                lambda row: True if row["animal"] == label else False,
+                axis=1
+            )
+            print("Label: ", label)
+            print(similar["animal"])
+            # majority vote, similar labels are the same, then use that label
+            if similar["same_label"].sum() >= 2:
+                print("not opposite label")
+                continue
+            else:
+                image_paths.append(image_path)
+                print("opposite label")
+        return image_paths
 
-        # Combine the selected rows
-        balanced_df = pd.concat([selected_label_1, selected_label_0])
+    # @staticmethod
+    # def select_balanced_rows(df, limit):
+    #     # Split the DataFrame into two subsets based on the "label" column
+    #     label_1 = df[df["label"] == 1]
+    #     label_0 = df[df["label"] == 0]
 
-        # If the combined DataFrame has fewer rows than the limit, add random samples
-        remaining_rows = limit - len(balanced_df)
-        if remaining_rows > 0:
-            # Exclude already selected rows
-            remaining_df = df[~df.index.isin(balanced_df.index)]
-            additional_samples = remaining_df.sample(n=min(remaining_rows, len(remaining_df)), random_state=42)
-            balanced_df = pd.concat([balanced_df, additional_samples])
+    #     # Calculate the number of rows to select from each subset
+    #     half_limit = limit // 2
 
-        # Shuffle the combined DataFrame
-        balanced_df = balanced_df.sample(frac=1, random_state=42).reset_index(drop=True)
+    #     # Select rows from each subset
+    #     selected_label_1 = label_1.sample(n=min(half_limit, len(label_1)), random_state=42)
+    #     selected_label_0 = label_0.sample(n=min(half_limit, len(label_0)), random_state=42)
 
-        return balanced_df
+    #     # Combine the selected rows
+    #     balanced_df = pd.concat([selected_label_1, selected_label_0])
+
+    #     # If the combined DataFrame has fewer rows than the limit, add random samples
+    #     remaining_rows = limit - len(balanced_df)
+    #     if remaining_rows > 0:
+    #         # Exclude already selected rows
+    #         remaining_df = df[~df.index.isin(balanced_df.index)]
+    #         additional_samples = remaining_df.sample(n=min(remaining_rows, len(remaining_df)), random_state=42)
+    #         balanced_df = pd.concat([balanced_df, additional_samples])
+
+    #     # Shuffle the combined DataFrame
+    #     balanced_df = balanced_df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    #     return balanced_df
 
     def random_search(self, limit: int) -> pd.DataFrame:
         lance_tbl = self.tbl.to_lance()
@@ -345,6 +396,33 @@ class VectorDB:
         )
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
+        return df_hits
+
+    def vector_embedding_search_hilts(
+        self,
+        embedding: np.ndarray,
+        limit: int,
+        include_image_paths: List[str] = [],
+    ) -> pd.DataFrame:
+        # Handle empty include_image_paths
+        if include_image_paths:
+            image_path_include_list_str = ', '.join(f"'{path}'" for path in include_image_paths)
+            include_clause = f"image_path IN ({image_path_include_list_str})"
+            print(include_clause)
+        else:
+            include_clause = "1=1"  # Always true, effectively no inclusion filter
+
+        df_hits = (
+            self.tbl.search(embedding)
+            .where(include_clause,  prefilter=True)
+            .limit(limit)
+            .to_df()
+        )
+
+        df_hits = df_hits[0:limit]
+
+        df_hits.drop(columns=["vector"], inplace=True)
+        df_hits = self.__join_labels(left_table=df_hits)
         return df_hits
 
     def __vector_embedding_search(

@@ -53,7 +53,7 @@ def start_training():
     label_hilts = args.get("labeling")
     global ltsmanager
     ltsmanager = LTSManager(project_id, db, DEMO)
-    training_process = ltsmanager.start_training(label_hilts, db)
+    training_process = ltsmanager.start_training(label_hilts)
     return jsonify({
         'message': 'Training started!',
         # 'process_id': training_process.pid
@@ -66,7 +66,7 @@ def start_retraining():
     args = data.get('argsDict')
     label_hilts = args.get("labeling")
     db.create_hilts_data()
-    training_process = ltsmanager.start_training(label_hilts, db)
+    training_process = ltsmanager.start_training(label_hilts)
     return jsonify({
         'message': 'Training started!',
     })
@@ -172,7 +172,7 @@ def random_hilts_search():
     projectId: str = request.args.get("projectId", "default", type=str)
     limit: int = request.args.get("limit", 12, type=int)
     print(f"getting data from project: {projectId}")
-    hits = db.random_hilts_search(limit=limit)
+    hits = db.random_hilts_search(limit=limit, s3_client=S3_Client)
     return {"total": len(hits.index), "hits": hits.to_dict("records")}
 
 

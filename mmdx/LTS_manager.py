@@ -58,7 +58,7 @@ class LTSManager:
                 else:
                     label = args.get("labeling")
                 if not self.demo:
-                    res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, loop, self.project_path, self.process_path, loop)
+                    res =  LTS(sampler, data, args.get("sample_size"), True, trainer, labeler, "filename", True, args.get("metric"), args.get("baseline"), label, loop, self.project_path, self.process_path)
                 else:
                     res = self.get_demo_res(loop, args, label)
                 if len(res) == 0:
@@ -187,7 +187,7 @@ class LTSManager:
 
 
 
-    def start_training(self, label_hits, db):
+    def start_training(self, label_hits):
         """
         Starts the model training in a separate process.
         :param args: Arguments for model training
@@ -198,7 +198,6 @@ class LTSManager:
         self.status = self.process.is_alive()
         self.process_id = self.process.pid
         print(f"Training process started with PID: {self.process_id}")
-
 
         # # Save the process ID to a file # DO I NEED THIS?
         self.process_path = f"{self.project_path}/{self.process_id}"
