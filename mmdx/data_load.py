@@ -103,6 +103,7 @@ def embed_image_files(
                 image_buffer = BytesIO(image_data.read())
                 embedding = model.embed_image_path(image_buffer)
             else:
+                print("getting emb from title")
                 embedding = model.embed_image_path(
                     image_path=os.path.join(data_path, path)
                 )
@@ -138,7 +139,7 @@ def load_batches(
             for i in range(0, len(image_files), batch_size):
                 image_paths = image_files[i : i + batch_size]
 
-                results = embed_image_files(model, data_path, image_paths, S3_Client)
+                results = embed_image_files(model, data_path, image_paths, S3_Client, None)
                 valid_image_paths = [path for path, emb in results if emb is not None]
                 valid_embeddings = [emb for path, emb in results if emb is not None]
                 valid_title = (
@@ -206,6 +207,13 @@ def make_df(
             vectors.append(embedding)
             image_paths.append(image_path)
             titles.append(df.loc[df["image_path"] == image_path, "title"].values[0])
+            metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
+        else:
+            print(f"Image file not found: {image_path}")
+            # If the image is not found, we can use the title as a fallback
+            vectors.append(model.embed_text(title))
+            image_paths.append(image_path)
+            titles.append(title)
             metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
 
     #TODO: MODIFY THIS TO EMBEDDINGS
