@@ -192,7 +192,7 @@ def make_df(
         image_files, df = load_images_from_minio(data_path, S3_Client)
     else:
         print("getting images from local folder")
-        image_files, df= load_images_from_path(data_path)
+        image_files, df = load_images_from_path(data_path)
 
     titles = []
     image_paths = []
@@ -200,26 +200,21 @@ def make_df(
     metadatas = []
     for image_path in tqdm.tqdm(image_files):
         title = df.loc[df["image_path"] == image_path, "title"].values[0]
-        image_path, embedding = embed_image_files(
+        image_path = image_path
+        text_embedding = model.embed_text(title)
+        image_path, image_embedding = embed_image_files(
             model, data_path, [image_path], S3_Client, title
         )[0]
-        if embedding is not None:
-            vectors.append(embedding)
-            image_paths.append(image_path)
-            titles.append(df.loc[df["image_path"] == image_path, "title"].values[0])
-            metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
+        if text_embedding is not None and image_embedding is not None:
+            final_embedding = (text_embedding + image_embedding) / 2
         else:
-            print(f"Image file not found: {image_path}")
-            # If the image is not found, we can use the title as a fallback
-            vectors.append(model.embed_text(title))
-            image_paths.append(image_path)
-            titles.append(title)
-            metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
+            final_embedding = text_embedding
 
-    #TODO: MODIFY THIS TO EMBEDDINGS
-    # emb = np.random.rand(512).astype(np.float32)
-    # df["vector"] = [emb] * len(df)
-    # df = df[["image_path", "title", "metadata", "vector"]]
+        vectors.append(final_embedding)
+        image_paths.append(image_path)
+        titles.append(title)
+        metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
+
 
     df = pd.DataFrame(
         {
