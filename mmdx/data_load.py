@@ -103,7 +103,6 @@ def embed_image_files(
                 image_buffer = BytesIO(image_data.read())
                 embedding = model.embed_image_path(image_buffer)
             else:
-                print("getting emb from title")
                 embedding = model.embed_image_path(
                     image_path=os.path.join(data_path, path)
                 )

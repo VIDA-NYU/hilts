@@ -14,6 +14,7 @@ from .s3_client import S3Client
 from io import BytesIO
 import re
 import json
+from kneed import KneeLocator
 
 
 duckdb.sql(
@@ -123,7 +124,6 @@ class VectorDB:
             image_paths = []
             if len(hilts_data) >0: # check if first iteration was done
                 image_paths = self.select_similar_df(df, hilts_data, s3_client, limit=limit)
-                print(f"similarity search: {image_paths}")
             elif image_paths == []:
                 image_paths = [path for path in df["image_path"].to_list() if path not in previous]
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
@@ -160,8 +160,6 @@ class VectorDB:
                 lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
                 axis=1
             )
-            print(df_hits["labels"])
-            print(df_hits["types"])
             df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
             df_hits.drop(columns=["vector", "types"], inplace=True)
 
@@ -189,38 +187,37 @@ class VectorDB:
                 exclude_path.append(image_path)
             else:
                 image_paths_include.append(image_path)
+
         image_paths  = []
         extra_paths = []
         for _ , row in df.iterrows(): ## needs to return this paths
             image_path = row["image_path"]
             label = "not animal origin" if row["label"] == 0 else "animal origin"
             exclude_path.append(image_path)
-            if S3_client:
-                try:
-                    image_data = S3_client.get_obj(self.data_path, image_path)
-                    image = BytesIO(image_data.read())
-                    image_embedding = self.model.embed_image_path(image)
-                except Exception as e:
-                    print(f"Error loading image {image_path}: {e}")
-                    image_embedding = self.model.embed_text(row["title"])
-            else:
-                image = os.path.join(self.data_path, image_path)
-                image_embedding = self.model.embed_image_path(image)
+            image_embedding = VectorDB.get_embedding_by_image_path(image_path)
+            # if S3_client:
+            #     try:
+            #         image_data = S3_client.get_obj(self.data_path, image_path)
+            #         image = BytesIO(image_data.read())
+            #         image_embedding = self.model.embed_image_path(image)
+            #     except Exception as e:
+            #         print(f"Error loading image {image_path}: {e}")
+            #         image_embedding = self.model.embed_text(row["title"])
+            # else:
+            #     image = os.path.join(self.data_path, image_path)
+            #     image_embedding = self.model.embed_image_path(image)
             # Select similar rows based on the vectordb search
-            similar = self.vector_embedding_search_hilts(image_embedding, limit=3, include_image_paths=image_paths_include)
+            similar = self.vector_embedding_search_hilts(image_embedding, limit=30, include_image_paths=image_paths_include)
 
             similar["same_label"] = similar.apply(
                 lambda row: True if row["animal"] == label else False,
                 axis=1
             )
-
-
-
             # majority vote, similar labels are the same, then use that label
-            if similar["same_label"].sum() == 3:
+            if similar["same_label"].sum() > int(len(similar) / 2):
                 print("not opposite label")
                 continue
-            elif similar["same_label"].sum() == 2:
+            elif similar["same_label"].sum() == int(len(similar)/2):
                 extra_paths.append(image_path)
             else:
                 image_paths.append(image_path)
@@ -334,8 +331,8 @@ class VectorDB:
         filtered_df = original_df[original_df['contains_phrase']]
         image_path_list = [path for path in filtered_df["image_path"].dropna()]
         image_path_list_str = ', '.join(f"'{path}'" for path in image_path_list)
-        print(f"total {image_path_list_str}")
-        print(f"list size {limit}")
+        # print(f"total {image_path_list_str}")
+        # print(f"list size {limit}")
         df_hits = duckdb.sql(
             f"""WITH filtered_data AS (
                 SELECT lance_tbl.*, grouped_labels.labels, grouped_labels.types
@@ -426,7 +423,6 @@ class VectorDB:
         if include_image_paths:
             image_path_include_list_str = ', '.join(f"'{path}'" for path in include_image_paths)
             include_clause = f"image_path IN ({image_path_include_list_str})"
-            print(include_clause)
         else:
             include_clause = "1=1"  # Always true, effectively no inclusion filter
 
@@ -436,9 +432,35 @@ class VectorDB:
             .limit(limit)
             .to_df()
         )
+        # print(df_hits)
 
-        df_hits = df_hits[0:limit]
+        # df_hits = df_hits[0:limit]
 
+        # df_hits.drop(columns=["vector"], inplace=True)
+        # df_hits = self.__join_labels(left_table=df_hits)
+        # return df_hits
+        if len(df_hits) < 2:
+            df_hits =  df_hits.drop(columns=["vector"])
+            df_hits = self.__join_labels(left_table=df_hits)
+            return df_hits
+
+        # Compute distances (assuming cosine similarity returned as 'score')
+        # You may need to adapt this line depending on what 'search' returns
+        distances = df_hits["_distance"].values  # higher = more similar
+        # distances = 1 - similarities             # lower = more similar
+
+        # Find elbow (knee) in the sorted distances
+        sorted_indices = np.argsort(distances)
+        sorted_distances = distances[sorted_indices]
+        kneedle = KneeLocator(range(1, len(sorted_distances)+1), sorted_distances, curve="concave", direction="increasing")
+        # Default fallback if no knee found
+        k = kneedle.knee or 3
+
+        # Apply the elbow cut
+        selected_indices = sorted_indices[:k]
+        df_hits = df_hits.iloc[selected_indices].reset_index(drop=True)
+
+        # Drop vector and join labels
         df_hits.drop(columns=["vector"], inplace=True)
         df_hits = self.__join_labels(left_table=df_hits)
         return df_hits
@@ -545,7 +567,6 @@ class VectorDB:
         )
         df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
         df_hits.drop(columns=["vector", "types"], inplace=True)
-        print(df_hits["labels_types_dict"])
         return df_hits
 
     def create_zip_labeled_binary_data(
@@ -605,4 +626,29 @@ class VectorDB:
 
             with open(self.hilts_path, "w") as file:
                 json.dump(hilts_data, file)
+
+    def get_embedding_by_image_path(self, image_path: str) -> Optional[np.ndarray]:
+        """
+        Retrieve the embedding vector for a given image_path from the database.
+
+        Args:
+            image_path (str): The path of the image to retrieve the embedding for.
+
+        Returns:
+            np.ndarray: The embedding vector if found, otherwise None.
+        """
+        # Convert the LanceDB table to a DuckDB table
+        lance_tbl = self.tbl.to_lance()
+
+        # Query the database for the specific image_path
+        query = f"SELECT vector FROM lance_tbl WHERE image_path='{image_path}';"
+        result = duckdb.sql(query).fetchall()
+
+        # Check if the result is empty
+        if len(result) == 0:
+            print(f"No embedding found for image_path: {image_path}")
+            return None
+
+        # Return the embedding as a NumPy array
+        return np.array(result[0][0])
 

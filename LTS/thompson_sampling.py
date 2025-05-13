@@ -68,7 +68,7 @@ class ThompsonSampler:
             count +=1
             chosen_bandit = self.choose_bandit()
             print(f"Chosen bandit {chosen_bandit}")
-            print(df["label_cluster"].value_counts())
+            # print(df["label_cluster"].value_counts())
             bandit_df = df[df["label_cluster"] == chosen_bandit]
             print(f"length of bendit {len(bandit_df)}")
             if not bandit_df.empty:

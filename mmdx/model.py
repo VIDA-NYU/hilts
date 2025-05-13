@@ -38,8 +38,12 @@ class ClipModel(BaseEmbeddingModel):
         return 512
 
     def embed_text(self, query: str) -> np.ndarray:
-        inputs = self.tokenizer([query], padding=True, return_tensors="pt").to(self.device)
-        text_features = self.model.get_text_features(**inputs)
+        try:
+            inputs = self.tokenizer([query], padding=True, return_tensors="pt").to(self.device)
+            text_features = self.model.get_text_features(**inputs)
+        except Exception as e:
+            print(f"Error embedding text: {e}")
+            return np.zeros(self.dimensions())
         return text_features.detach().cpu().numpy()[0]
 
     def embed_image(self, image: Image) -> np.ndarray:
