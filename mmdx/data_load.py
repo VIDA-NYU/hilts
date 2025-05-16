@@ -204,17 +204,25 @@ def make_df(
         image_path, image_embedding = embed_image_files(
             model, data_path, [image_path], S3_Client, title
         )[0]
+
+        # Aggregate embeddings and ensure consistent dtype
         if text_embedding is not None and image_embedding is not None:
             final_embedding = (text_embedding + image_embedding) / 2
         else:
             final_embedding = text_embedding
+
+        # Convert to float32 and handle None values
+        if final_embedding is not None:
+            final_embedding = np.array(final_embedding, dtype=np.float32)
+        else:
+            final_embedding = np.zeros(model.dimensions(), dtype=np.float32)
 
         vectors.append(final_embedding)
         image_paths.append(image_path)
         titles.append(title)
         metadatas.append(df.loc[df["image_path"] == image_path, "metadata"].values[0])
 
-
+    # Create the DataFrame
     df = pd.DataFrame(
         {
             "title": titles,
@@ -224,7 +232,6 @@ def make_df(
         }
     )
     df['metadata'] = df['metadata'].apply(clean_and_validate_json)
-    # print(f"Vector: {df['vector']}")
     return df
 
 

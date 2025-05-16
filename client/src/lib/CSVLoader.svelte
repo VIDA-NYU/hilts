@@ -362,7 +362,10 @@
 
 <!-- Modal for LTS Data Generator -->
 <Modal bind:showModal={showModal} closeBtnName="Save" onCloseAction={createLtsConfig}>
-  <h2 slot="header">LTS Settings</h2>
+  <h2 slot="header">
+    <div class="card">
+      <div class="card-header bg-primary text-white">LTS Settings
+    </div></h2>
   <div slot="body">
     <!-- Modal Content (LTS Parameters) -->
     <div class="row">
