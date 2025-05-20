@@ -100,9 +100,9 @@ def update_config(project_path, new_info):
     sample_size = config.get("sample_size")
     loops = int(budget_value/sample_size)
 
-    budget_used = new_info.get("bugetValue")
-    if budget_used:
-        loop_left = loops - (budget_used)
+    loop = new_info.get("bugetValue")
+    if loop:
+        loop_left = loops - 1
     else:
         loop_left = loops
     budget = loop_left * sample_size

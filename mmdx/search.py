@@ -194,7 +194,7 @@ class VectorDB:
             image_path = row["image_path"]
             label = "not animal origin" if row["label"] == 0 else "animal origin"
             exclude_path.append(image_path)
-            image_embedding = VectorDB.get_embedding_by_image_path(image_path)
+            image_embedding = self.get_embedding_by_image_path(image_path)
             # if S3_client:
             #     try:
             #         image_data = S3_client.get_obj(self.data_path, image_path)

@@ -48,9 +48,10 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
     # not retrain but fine-tune best model
     if improved:
         print(f"Model improved")
+        baseline = results[f"eval_{metric}"]
         model_name = f"{project_path}/models/fine_tunned_{loop}_bandit_{chosen_bandit}"
-        trainer.update_model(model_name, results[f"eval_{metric}"], save_model=True)
-        update_config(project_path, {"model_finetune": model_name, "bugetValue": loop, "baseline": baseline})
+        trainer.update_model(model_name, baseline, save_model=True)
+        # update_config(project_path, {"model_finetune": model_name, "bugetValue": loop, "baseline": baseline})
         # save separated training data file
         name = f'{project_path}/{filename}_training_data'
         load_and_save_csv(name, training_data)
@@ -59,9 +60,11 @@ def LTS(sampler, data, sample_size, filter_label, trainer, labeler, filename, ba
             trainer.set_clf(True)
     else:
         #back to initial model
-        trainer.update_model(model_name, baseline, save_model=False)
+        # trainer.update_model(model_name, baseline, save_model=False)
         # save positive sample
         load_and_save_csv(f"{project_path}/positive_data", training_data[training_data["label"]==1])
+
+    update_config(project_path, {"model_finetune": model_name, "bugetValue": loop, "baseline": baseline})
 
     save_bendit_results(filename, chosen_bandit, results, project_path)
     return results_test
