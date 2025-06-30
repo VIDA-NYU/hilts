@@ -15,6 +15,8 @@ from io import BytesIO
 import re
 import json
 from kneed import KneeLocator
+from sklearn.metrics.pairwise import cosine_similarity
+import random
 
 
 duckdb.sql(
@@ -105,6 +107,15 @@ class VectorDB:
         return self.labelsdb.counts()
 
     def random_hilts_search(self, limit: int, s3_client: S3Client) -> pd.DataFrame:
+        # read from data/project_id/config_file.json the samplingVersion
+        if not os.path.exists(f"data/{self.project_id}/config_file.json"):
+            sampling_version = "random"
+        with open(f"data/{self.project_id}/config_file.json", "r") as f:
+            config = json.load(f)
+            sampling_version = config.get("samplingVersion", "random")
+
+        print('Sampling version:', sampling_version)
+
         lance_tbl = self.tbl.to_lance()
 
         if os.path.exists(self.csvpath):
@@ -122,10 +133,17 @@ class VectorDB:
             df = pd.read_csv(self.csvpath) # current_sample_training.csv
             # balanced_df = VectorDB.select_balanced_rows(df, limit) ## for demo
             image_paths = []
-            if len(hilts_data) >0: # check if first iteration was done
-                image_paths = self.select_similar_df(df, hilts_data, s3_client, limit=limit)
-            elif image_paths == []:
+            if sampling_version == "random":
                 image_paths = [path for path in df["image_path"].to_list() if path not in previous]
+
+            elif sampling_version == "embedding":
+                image_paths = self.select_similar_df(df, hilts_data, s3_client, limit=limit)
+            elif sampling_version == "uncertainty":
+                if "uncertainty" in df.columns: # check if first iteration was done
+                    image_paths = self.select_uncertainty_path(df, limit=limit)
+            if image_paths == []:
+                image_paths = [path for path in df["image_path"].to_list() if path not in previous]
+
             image_path_list_str = ', '.join(f"'{path}'" for path in image_paths)
 
 
@@ -153,27 +171,83 @@ class VectorDB:
                     USING SAMPLE {limit} ROWS;
                     """
                     ).to_df()
-            df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
-            df_hits["title"] = df_hits["title"].fillna("")
-            df_hits["types"] = df_hits["types"].fillna("").apply(list)
-            df_hits["animal"] = df_hits.apply(
-                lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
-                axis=1
-            )
-            df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
-            df_hits.drop(columns=["vector", "types"], inplace=True)
+            if len(df_hits) > 0 :
+                df_hits["labels"] = df_hits["labels"].fillna("").apply(list)
+                df_hits["title"] = df_hits["title"].fillna("")
+                df_hits["types"] = df_hits["types"].fillna("").apply(list)
+                df_hits["animal"] = df_hits.apply(
+                    lambda row: row["labels"][0] if isinstance(row["labels"], list) and "relevant" in row["types"] else None,
+                    axis=1
+                )
+                df_hits["labels_types_dict"] = df_hits.apply(lambda row: {label: type for label, type in zip(row["labels"], row["types"])}, axis=1)
+                df_hits.drop(columns=["vector", "types"], inplace=True)
 
-            for image_path in image_paths:
-                if image_path not in hilts_data:
-                    hilts_data[image_path] = {}  # You can customize this default structure if needed
-                animal_label = df_hits[df_hits["image_path"] == image_path]["animal"].values
-                if len(animal_label) > 0:
-                    hilts_data[image_path]["llm_label"] = animal_label[0]
-            with open(self.hilts_path, "w") as file:
-                json.dump(hilts_data, file)
-            return df_hits
+                for image_path in image_paths:
+                    if image_path not in hilts_data:
+                        hilts_data[image_path] = {}  # You can customize this default structure if needed
+                    animal_label = df_hits[df_hits["image_path"] == image_path]["animal"].values
+                    if len(animal_label) > 0:
+                        hilts_data[image_path]["llm_label"] = animal_label[0]
+                with open(self.hilts_path, "w") as file:
+                    json.dump(hilts_data, file)
+                return df_hits
+            else:
+                print("No hits found in the database. Falling back to random search.")
+                return self.random_search(limit)
         else:
             return self.random_search(limit)
+
+
+    def select_uncertainty_path(self, df: pd.DataFrame, limit: int) -> List[str]:
+        """
+        Select image paths based on uncertainty while ensuring diversity in embeddings.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame containing "uncertainty" and "image_path" columns.
+            limit (int): The number of image paths to select.
+
+        Returns:
+            List[str]: A list of selected image paths.
+        """
+        if df["uncertainty"].isnull().all():
+            return []
+        # Ensure sorted_df remains a DataFrame
+        sorted_df = df.drop_duplicates(subset="image_path").sort_values("uncertainty")
+
+        # Retrieve embeddings for all image paths
+        embeddings = sorted_df["image_path"].apply(self.get_embedding_by_image_path).tolist()
+
+        selected_indices = []
+        current_index = 0
+
+        # While loop to select diverse paths
+        while len(selected_indices) < limit and current_index < len(embeddings):
+            embedding = embeddings[current_index]
+
+            # Check similarity with already selected embeddings
+            is_similar = any(
+                cosine_similarity([embedding], [embeddings[j]])[0][0] > 0.9
+                for j in selected_indices
+            )
+
+            # Add to the list if not similar
+            if not is_similar:
+                selected_indices.append(current_index)
+
+            # Move to the next index
+            current_index += 1
+
+        # If the limit is not reached, randomly select additional rows
+        if len(selected_indices) < limit:
+            remaining_rows = limit - len(selected_indices)
+            remaining_indices = [i for i in range(len(sorted_df)) if i not in selected_indices]
+            random_indices = random.sample(remaining_indices, min(remaining_rows, len(remaining_indices)))
+            selected_indices.extend(random_indices)
+
+        # Get unique image paths from selected rows
+        selected_paths = sorted_df.iloc[selected_indices]["image_path"].tolist()
+
+        return selected_paths
 
 
     def select_similar_df(self, df: pd.DataFrame, hilts_data: dict, S3_client: S3Client, limit: int) -> List[str]:

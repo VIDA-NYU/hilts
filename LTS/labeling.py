@@ -44,9 +44,9 @@ class Labeling:
         #     self.model = Client(host='https://ollama-asr498.users.hsrn.nyu.edu/')
         #     print("Using OLLAMA client")
         if self.label_model=="llama":
-            self.model = OpenAI(api_key="x")
+            self.model = OpenAI(api_key="x", base_url="https://api.deepinfra.com/v1/openai")
         elif self.label_model == "gpt":
-            self.model = OpenAI(api_key="X")
+            self.model = OpenAI(api_key="x")
         elif self.label_model =="mistral":
             from transformers import AutoModelForCausalLM, AutoTokenizer
             self.model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-v0.1", device_map="auto")
@@ -155,6 +155,7 @@ class Labeling:
             return s[:max_length] + '...' if len(s) > max_length else s
         if self.label_model != "file":
             examples = []
+            columns = data.columns.tolist()
             for _, data_point in data.iterrows():
                 examples.append(
                 {
@@ -165,6 +166,8 @@ class Labeling:
                     "label_cluster": data_point["label_cluster"],
                     "title": data_point["title"],
                     "text": self.generate_prompt(truncate_string(data_point[column])),
+                    "predicted_label": data_point["predicted_label"] if "label" in columns else None,
+                    "uncertainty": data_point["uncertainty"] if "uncertainty" in columns else None,
                 }
                 )
             data = pd.DataFrame(examples)
@@ -197,7 +200,7 @@ class Labeling:
                 temperature=0.2,
             )
         res = response.choices[0].message.content
-        print(f"res: {res}")
+        # print(f"res: {res}")
         return res
         # products = ["not a relevant product", "relevant product"]
         # return random.choice(products)

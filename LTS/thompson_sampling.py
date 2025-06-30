@@ -75,9 +75,12 @@ class ThompsonSampler:
                 if filter_label:
                     if trainer.get_clf():
                         write_state(state_path, "Cluster Inference")
-                        bandit_df["predicted_label"] = trainer.get_inference(bandit_df)
+                        bandit_df["predicted_label"], probs = trainer.get_inference(bandit_df)
+                        bandit_df["uncertainty"] = [abs(max(p) - 0.5) for p in probs]
                         print("inference results")
                         print(bandit_df["predicted_label"].value_counts())
+                        print("uncertainty results")
+                        print(bandit_df["uncertainty"])
                     if "predicted_label" in bandit_df.columns:
                         print("inference results")
                         print(bandit_df["predicted_label"].value_counts())

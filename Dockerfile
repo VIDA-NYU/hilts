@@ -1,5 +1,5 @@
 #------------------------------------
-FROM python:3.9-slim-bookworm as base
+FROM python:3.9-slim-bookworm AS base
 #------------------------------------
 
 # RUN apt-get update \
@@ -9,15 +9,15 @@ FROM python:3.9-slim-bookworm as base
 WORKDIR /app/
 
 #-------------------------------------------
-FROM node:18-bookworm-slim as client-builder
+FROM node:18-bookworm-slim AS client-builder
 #-------------------------------------------
 
-COPY client/package.json client/package-lock.json /app/client/
 WORKDIR /app/client
+COPY client/package.json client/package-lock.json /app/client/
 
 RUN npm install
 
-COPY client /app/client
+COPY client ./
 RUN npm run build
 
 #-------------------
@@ -29,7 +29,7 @@ ENV PIP_DEFAULT_TIMEOUT=100 \
     PIP_NO_CACHE_DIR=1 \
     POETRY_VERSION=1.6.1
 
-RUN pip install "poetry==$POETRY_VERSION"
+RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
 COPY pyproject.toml poetry.lock /app/
 
@@ -59,7 +59,6 @@ COPY --chown=mmdx --from=builder /app/.venv /app/.venv
 COPY --chown=mmdx --from=client-builder /app/client/dist/ /app/client/dist/
 COPY --chown=mmdx client/public/ /app/client/public/
 COPY --chown=mmdx LTS /app/LTS
-COPY --chown=mmdx docker-entrypoint /app/
 # RUN chmod +x /app/entrypoint.sh
 
 
@@ -77,7 +76,7 @@ EOF
 
 # Setup env variables
 ENV ENV=prod
-ENV GUNICORN_CMD_ARGS="--workers=1 --threads=1 --worker-class=gthread --log-file=- --chdir /app/ --worker-tmp-dir /dev/shm --bind 0.0.0.0:5000"
+ENV GUNICORN_CMD_ARGS="--workers=1 --threads=4 --worker-class=gthread --log-file=- --chdir /app/ --worker-tmp-dir /dev/shm --bind 0.0.0.0:5000"
 
 # Run the application:
 COPY server.py .
@@ -85,3 +84,4 @@ COPY create_db.py .
 # COPY entrypoint.sh .
 # RUN chmod +x /app/entrypoint.sh
 CMD ["gunicorn", "--timeout", "600", "server:app"]
+# CMD ["python", "server.py"]

@@ -223,7 +223,7 @@
       <!-- </div> -->
       </div>
       <div class="btn-group-vertical" role="group" aria-label="">
-        <AutoComplete
+        <!-- <AutoComplete
           debug={false}
           inputClassName="form-control"
           items={allAnimals}
@@ -231,7 +231,7 @@
           create={false}
           onChange={(label) => addLabelExclusive(label, "animal")}
           placeholder="Animal"
-        />
+        /> -->
 
         <!-- <div class="btn-group me-2" role="group" aria-label=""> -->
           <AutoComplete

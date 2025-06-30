@@ -5,6 +5,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from datasets import Dataset, DatasetDict
 from transformers import Trainer, PreTrainedTokenizerBase, TrainingArguments, DataCollatorWithPadding, BertForSequenceClassification, PreTrainedModel
 import torch
+import torch.nn.functional as F
 from torch.utils.data import IterableDataset
 import pandas as pd
 from torch import nn
@@ -31,7 +32,6 @@ class BertFineTuner:
             self.model = model
         else:
             self.model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
-        print(self.device)
         self.model.to(self.device)
 
 
@@ -130,7 +130,7 @@ class BertFineTuner:
             metric_for_best_model="eval_f1",
             per_device_train_batch_size=32,
             per_device_eval_batch_size=32,
-            num_train_epochs=10,  # TODO
+            num_train_epochs=20,  # TODO
             learning_rate=self.learning_rate,
             weight_decay=self.weight_decay,
             save_total_limit=2,
@@ -172,8 +172,6 @@ class BertFineTuner:
                 labels = test["label"].values  # Assuming the test.csv has a 'label' column
                 preds = predictions.predictions.argmax(-1)
                 results_test = self.compute_metrics_from_predictions(labels, preds)
-
-                print("Test Results:", results_test)
 
             self.trainer = trainer
 
@@ -219,18 +217,13 @@ class BertFineTuner:
     def get_inference(self, df):
         """
         Performs inference on a DataFrame and returns predicted labels as a tensor.
-
         Args:
             df (pd.DataFrame): DataFrame containing the data to perform inference on.
-
         Returns:
             np.ndarray: Array of predicted labels.
-
         Raises:
             ValueError: If the trainer is not initialized or if the DataFrame is empty.
         """
-        if not self.trainer:
-            raise ValueError("Trainer not initialized. Please train the model first.")
 
         if df.empty:
             raise ValueError("DataFrame is empty.")
@@ -256,22 +249,33 @@ class BertFineTuner:
                 json.dump(progress_data, f, indent=4)
 
             all_predictions = []
+            all_probabilities = []
             for i in range(total_chunks):
                 start_idx = i * chunk_size
                 end_idx = min((i + 1) * chunk_size, len(df))
                 chunk = df.iloc[start_idx:end_idx]
                 print(f"Processing chunk {i+1}/{total_chunks} ({start_idx+1}-{end_idx} records)...")
+                if not self.trainer:
+                    probs, class_preds = self.get_model_inference(chunk)
+                else:
+                    # Create dataset for the chunk
+                    test_dataset = self.create_test_dataset(chunk)
 
-                # Create dataset for the chunk
-                test_dataset = self.create_test_dataset(chunk)
+                    # Get predictions
+                    predictions = self.trainer.predict(test_dataset["test"])
 
-                # Get predictions
-                predictions = self.trainer.predict(test_dataset["test"])
-                # Move tensor to CPU before converting to numpy array
-                chunk_predictions = predictions.predictions.argmax(-1)
-                if torch.is_tensor(chunk_predictions):  # Ensure it's a tensor
-                    chunk_predictions = chunk_predictions.cpu().numpy()
-                all_predictions.extend(chunk_predictions)
+                    logits = predictions.predictions
+                    if not torch.is_tensor(logits):
+                        logits = torch.tensor(logits)
+
+                    # Compute softmax probabilities and move to NumPy
+                    probs = F.softmax(logits, dim=-1).cpu().numpy()
+
+                    # Store class predictions
+                    class_preds = probs.argmax(axis=-1)
+
+                all_predictions.extend(class_preds)
+                all_probabilities.extend(probs)
 
                 # Update progress
                 progress_data.update({
@@ -285,7 +289,7 @@ class BertFineTuner:
             if os.path.exists(inference_progress_path):
                 os.remove(inference_progress_path)
 
-            return all_predictions
+            return all_predictions, all_probabilities
 
         except Exception as e:
             # Remove progress file on error
@@ -302,6 +306,29 @@ class BertFineTuner:
         self.last_model_acc = {model_name: model_acc}
         self.model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)
         self.base_model = model_name
+
+    def get_model_inference(self, chunk: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        inputs = self.tokenizer(
+                chunk["title"].tolist(),
+                padding="max_length",
+                truncation=True,
+                max_length=512,
+                return_tensors="pt"
+            )
+
+        # Move inputs to the correct device
+        inputs = {key: val.to(self.device) for key, val in inputs.items()}
+
+        # Perform inference using the model directly
+        with torch.no_grad():
+            logits = self.model(**inputs).logits
+
+        # Compute softmax probabilities and move to NumPy
+        probs = F.softmax(logits, dim=-1).cpu().numpy()
+
+        # Store class predictions
+        class_preds = probs.argmax(axis=-1)
+        return probs, class_preds
 
 
 class MyTrainer(Trainer):

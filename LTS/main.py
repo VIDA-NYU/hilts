@@ -27,7 +27,7 @@ def initialize_LTS(project_path, demo=False):
     budget_value = int(args.get("bugetValue"))
     model_finetune = args.get("model_finetune")
     model_name = args.get("model_name")
-    # model_init = args.get("model_init")
+    model_init = args.get("model_init")
 
     loop_file = os.path.join(project_path, "loop.txt")
     if os.path.exists(loop_file):
@@ -51,6 +51,9 @@ def initialize_LTS(project_path, demo=False):
     write_state(project_path, "Loading Base Model")
 
     trainer = initialize_trainer("text", model_finetune, validation, project_path=project_path)
+    if model_init != model_finetune:
+        print("setting model to clf")
+        trainer.set_clf(True)
 
     sampler = initialize_sampler(sampling, cluster_size, project_path)
 

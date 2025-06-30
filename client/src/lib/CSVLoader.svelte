@@ -36,43 +36,48 @@
   let responseMessageTest = "";
 
   // LTS Generator parameters (added for the modal)
-  let task_prompt = `You are labeling tool to create labels for a classification task .I will provide text data from an advertisement of a product.We are interested in any animal intended to be used for their leather/skin.
-     Also any product made out these materials are important.
-      The product should be classified in two labels:
-      Label 1: relevant product - if the product is a animal or a product made of any animal leather or skin.
-      Label 2: not a relevant product - if the product is 100% synthetic with no animal involved (vegan) such as fake lather or fake skin.Return only one of the two labels, no explanation is necessary.
-      Examples:
-      1. Advertisement: Huge 62" Inside Spread Alaskan Yukon Bull Moose Shoulder Mount  | eBay
-      Label: not a relevant product
-      The product in example 1 is a bull mount. The animal entended used is not about the leather or skin.
-      2. Advertisement: Python skin For Sale in Launceston, Cornwall .
-      Label: relevant product
-      The product on example 2 are selling Python skin wich is a product we are intered in.
-      3. Advertisement: Gator leather boots, wallets and purse for sale.
-      Label: relevant product
-      In exemple 3 we have a 3 different products all made of leather of alligator.
-      4. Advertisement: Mario Buccellati, a Rare and Exceptional Italian Silver Gator For Sale at 1stDibs
-      Label: not a relevant product
-      This example 4 is also not an animal product. The gator in the ad is made out of silver.
-      5. Advertisement: Leather Recycled African Safari Bookmarks | eBay
-      Label: not a relevant product
+  let task_prompt = `You are labelling tool to create labels for a classification task. I will provide text data from an advertisement of a product. The product should be classified in two labels:
+  - relevant product - if the product is an animal or is made from animal, or
+  - not a relevant product - if the product is 100% synthetic with no animal involved. Return only one of the two labels, no explanation is necessary.
+
+  Examples:
+
+  1. Advertisement: Great White Shark Embroidered Patch Iron on Patch For Clothes.
+  Label: not a relevant product
+  The product is a piece of clothes with an animal embroidered.
+
+  2. Advertisement: Kennel club registered Labrador puppies For Sale in Launceston, Cornwall.
+  Label: relevant product
+  The product on example 2 are selling live dog puppies. 100% animal product in this case.
+
+  3. Advertisement: Swimbait for Bass Trout Redfish Walleye Saltwater And Freshwater.
+  Label: not a relevant product
+  In example 3 we have a swimbait to catch fish. Probably made of plastic.
+
+  4. Advertisement: Mario Buccellati, a Rare and Exceptional Italian Silver Goat For Sale.
+  Label: not a relevant product
+  This example 4 is also not an animal product. The gator in the ad is made out of silver.
+
+  5. Advertisement: 1/10X Wholesale High Quality Natural Ostrich Feathers Wedding Party 15-30c BIBI | eBay
+  Label: relevant product
+  This is a product made out of Ostrich Feathers. Ostrich is an animal, being that an animal by-product.
 `
   let sampling = "thompson";
-  let sample_size = 100;
+  let sample_size = 200;
   let model_finetune = "bert-base-uncased";
   let model_init = "bert-base-uncased";
-  let labeling = "gpt";
+  let labeling = "llama";
   let metric = "f1";
-  let validation_size = 200;
-  let cluster_size = 5;
+  let validation_size = 400;
+  let cluster_size = 10;
   let budget = "trainingSize";
   let baseline = 0;
-  let bugetValue = 1000;
+  let bugetValue = 2000;
   let cluster = "lda"
   let projectId = "";
-  let humanLabels = 20;
+  let humanLabels = 40;
   let model_name = "meta-llama/Llama-3.3-70B-Instruct";
-  // let stop = 2;
+  let samplingVersion = "random"; // Add this line
 
   projectName.subscribe((name) => {
     projectId = name;
@@ -105,6 +110,7 @@
       cluster,
       humanLabels,
       model_name, // Add model_name here
+      samplingVersion, // Ensure samplingVersion is included
     };
     console.log("Updated argsDict:", argsDict); // Debugging to verify updates
   }
@@ -208,7 +214,7 @@
     <!-- <h1 class=
      "">Enter Project Name</h1> -->
     <div class="form-group">
-      <label for="projectIdInput">Project Name</label>
+      <label for="projectIdInput"style="font-size: 1.2rem;"><strong>Project Name</strong></label>
       <input
         id="projectIdInput"
         bind:value={projectId}
@@ -253,7 +259,7 @@
   <!-- Load Data Section -->
   <div class="py-4">
     <!-- <h1>Load Data</h1> -->
-    <label for="projectData">Select Dataset</label>
+    <label for="projectData"style="font-size: 1.2rem;"><strong>Select Dataset</strong></label>
     <input
       id="projectData"
       bind:this={uploader}
@@ -287,7 +293,7 @@
 
   <!-- Add this below the existing "Load Data Section" -->
   <div class="py-4">
-    <label for="testData">Select Test Dataset</label>
+    <label for="testData" style="font-size: 1.2rem;"><strong>Select Test Dataset</strong></label>
     <input
       id="testData"
       bind:this={testUploader}
@@ -304,12 +310,29 @@
         Load Test File
       </button>
     </div>
-
+    <div class="py-4">
+    <label for="testData" style="font-size: 1.2rem;"><strong>Select Validation Dataset </strong></label>
+    <input
+      id="testData"
+      bind:this={testUploader}
+      type="file"
+      class="form-control"
+      style="max-width:400px"
+    />
+    <div class="pt-2">
+      <button class="btn btn-primary"
+        on:click={uploadTestFile}
+        disabled={isRunning}
+      >
+        <span class="fa fa-download mr-2" />
+        Load Validation File
+      </button>
+    </div>
     <div class="mt-2">
       {#if uploadingTest}
         <span>
           <i class="fa fa-spinner fa-spin" aria-hidden="true" />
-          Loading Test Set...
+          Loading Validation Set...
         </span>
       {:else if responseMessageTest}
         <div>
@@ -318,10 +341,11 @@
       {/if}
     </div>
   </div>
+  </div>
 
   <!-- Start LTS Data Generator Button -->
   <div class="py-4">
-    <label for="seetings">LTS Settings</label>
+    <label for="seetings"style="font-size: 1.2rem;"><strong>HILTS Settings</strong></label>
     <div class="pt-2">
       <button class="btn btn-secondary" on:click={() => (showModal = true)}  disabled={isRunning}>
         <!-- <span class="fa fa-cogs mr-2" /> -->
@@ -364,7 +388,7 @@
 <Modal bind:showModal={showModal} closeBtnName="Save" onCloseAction={createLtsConfig}>
   <h2 slot="header">
     <div class="card">
-      <div class="card-header bg-primary text-white">LTS Settings
+      <div class="card-header bg-primary text-white">HILTS Settings
     </div></h2>
   <div slot="body">
     <!-- Modal Content (LTS Parameters) -->
@@ -492,13 +516,12 @@
       </div>
       </div>
       <div class="col-6">
-        <label for="human_labels">Minimum number of samples to correct</label>
-        <input
-          id="human_labels"
-          type="number"
-          class="form-control"
-          bind:value={humanLabels}
-        />
+        <label for="sampling_version">Sampling Version</label>
+        <select id="sampling_version" class="form-control" bind:value={samplingVersion}>
+          <option value="random">random</option>
+          <option value="nn-voting">embedding</option>
+          <option value="uncertainty">uncertainty</option>
+        </select>
       </div>
       <div class="col-6">
         <label for="model_name">Model Name</label>
@@ -510,6 +533,16 @@
           placeholder="Enter model name (e.g., meta-llama/Llama-3.3-70B-Instruct)"
         ></textarea>
       </div>
+      <div class="col-6">
+        <label for="human_labels">Minimum number of samples to correct</label>
+        <input
+          id="human_labels"
+          type="number"
+          class="form-control"
+          bind:value={humanLabels}
+        />
+      </div>
+
     </div>
   </div>
 </Modal>
